@@ -18,7 +18,13 @@
                 "id": "vibeguard",
                 "name": "vibeguard",
                 "description": "I'll help you scrub secrets before you send them to the AI.",
-                "isSticky": true
+                "isSticky": true,
+                "commands": [
+                    {
+                        "name": "context",
+                        "description": "Share a redacted version of your .env file"
+                    }
+                ]
             }
         ],
         "commands": [
@@ -37,5 +43,8 @@
         "@types/vscode": "^1.86.0",
         "@types/node": "20.x",
         "typescript": "^5.3.3"
+    },
+    "dependencies": {
+        "dotenv": "^16.4.5"
     }
 }

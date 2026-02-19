@@ -1,11 +1,26 @@
 import * as vscode from 'vscode';
 import { SecretScanner } from './SecretScanner';
+import { EnvManager } from './EnvManager';
 
 export function activate(extContext: vscode.ExtensionContext) {
     // 1. Define the Chat Participant
     const vibeguard = vscode.chat.createChatParticipant('vibeguard', async (request: vscode.ChatRequest, context: vscode.ChatContext, stream: vscode.ChatResponseStream, token: vscode.CancellationToken) => {
 
         const userPrompt = request.prompt;
+
+        // Command: /context (Custom command handling example)
+        if (request.command === 'context') {
+            const workspaceFolders = vscode.workspace.workspaceFolders;
+            if (!workspaceFolders) {
+                stream.markdown('No workspace folder open. Cannot read .env context.');
+                return { metadata: { command: 'no-workspace' } };
+            }
+
+            const redactedEnv = await EnvManager.getRedactedEnv(workspaceFolders[0].uri);
+            stream.markdown(`🛡️ **VibeGuard Context**\n\nHere is the safe version of your \`.env\` file:\n\n`);
+            stream.markdown('```env\n' + redactedEnv + '\n```');
+            return { metadata: { command: 'shared-context' } };
+        }
 
         // 2. Redact Secrets
         const { redactedText, secrets } = SecretScanner.redact(userPrompt);
