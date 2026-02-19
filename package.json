@@ -1,0 +1,36 @@
+{
+    "name": "vibeguard",
+    "displayName": "VibeGuard",
+    "description": "Prevent secret leakage in AI chats",
+    "version": "0.0.1",
+    "publisher": "craigmccart",
+    "engines": {
+        "vscode": "^1.86.0"
+    },
+    "categories": [
+        "Security",
+        "Other"
+    ],
+    "activationEvents": [],
+    "main": "./out/extension.js",
+    "contributes": {
+        "chatParticipants": [
+            {
+                "id": "vibeguard",
+                "name": "vibeguard",
+                "description": "I'll help you scrub secrets before you send them to the AI.",
+                "isSticky": true
+            }
+        ]
+    },
+    "scripts": {
+        "vscode:prepublish": "npm run compile",
+        "compile": "tsc -p ./",
+        "watch": "tsc -watch -p ./"
+    },
+    "devDependencies": {
+        "@types/vscode": "^1.86.0",
+        "@types/node": "20.x",
+        "typescript": "^5.3.3"
+    }
+}
