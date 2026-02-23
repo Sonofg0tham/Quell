@@ -11,12 +11,16 @@
         "rootDir": "src",
         "moduleResolution": "node",
         "esModuleInterop": true,
-        "skipLibCheck": true
+        "skipLibCheck": true,
+        "types": [
+            "node"
+        ]
     },
+    "include": [
+        "src/SecretScanner.ts",
+        "src/test/*.ts"
+    ],
     "exclude": [
-        "node_modules",
-        ".vscode-test",
-        "src/test/**",
-        "playground/**"
+        "node_modules"
     ]
 }

@@ -1,46 +1,85 @@
 import * as vscode from 'vscode';
-import * as fs from 'fs';
-import * as path from 'path';
+import { Logger } from './Logger';
 
+/**
+ * Manages .env file discovery and redaction.
+ * Prevents AI from ingesting raw environment secrets by providing
+ * redacted versions with keys visible but values masked.
+ */
 export class EnvManager {
 
+    /** Glob patterns for env-like files */
+    private static readonly ENV_GLOBS = [
+        '**/.env',
+        '**/.env.*',
+        '**/.env.local',
+        '**/.env.development',
+        '**/.env.production',
+        '**/.env.staging',
+        '**/.env.test',
+    ];
+
+    /** Folders to always exclude */
+    private static readonly EXCLUDE_PATTERN = '{**/node_modules/**,**/.git/**,**/dist/**,**/build/**,**/out/**}';
+
     /**
-     * Reads the .env file, redacts values, and returns a safe string for the AI context.
+     * Searches for all .env files in the workspace (excluding typical build dirs),
+     * reads them asynchronously, and returns a combined redacted string.
+     * 
+     * Keys are preserved (e.g. `DATABASE_URL`) so the AI understands the shape,
+     * but all values are replaced with `<HIDDEN_BY_VIBEGUARD>`.
      */
-    public static async getRedactedEnv(workspaceFolder: vscode.Uri): Promise<string> {
-        const envPath = path.join(workspaceFolder.fsPath, '.env');
+    public static async getRedactedEnv(): Promise<string> {
+        const envFiles = await vscode.workspace.findFiles(
+            '{**/.env,**/.env.*}',
+            this.EXCLUDE_PATTERN
+        );
 
-        if (!fs.existsSync(envPath)) {
-            return 'No .env file found in the workspace root.';
+        if (!envFiles || envFiles.length === 0) {
+            Logger.info('ENV: No .env files found in workspace.');
+            return 'No .env files found in the workspace.';
         }
 
-        try {
-            const fileContent = fs.readFileSync(envPath, 'utf-8');
-            const lines = fileContent.split('\n');
-            let redactedContent = '# .env (Redacted by VibeGuard)\n';
+        Logger.info(`ENV: Found ${envFiles.length} .env file(s) to redact.`);
+        let combinedContent = '';
 
-            for (const line of lines) {
-                const trimmed = line.trim();
-                // Skip comments and empty lines
-                if (!trimmed || trimmed.startsWith('#')) {
-                    redactedContent += line + '\n';
-                    continue;
+        for (const uri of envFiles) {
+            const relPath = vscode.workspace.asRelativePath(uri);
+            combinedContent += `\n# ─── ${relPath} (Redacted by VibeGuard) ───\n`;
+
+            try {
+                // Async file read — does NOT block the extension host
+                const rawBytes = await vscode.workspace.fs.readFile(uri);
+                const fileContent = Buffer.from(rawBytes).toString('utf-8');
+                const lines = fileContent.split(/\r?\n/);
+
+                for (const line of lines) {
+                    const trimmed = line.trim();
+
+                    // Preserve blank lines and comments
+                    if (!trimmed || trimmed.startsWith('#')) {
+                        combinedContent += line + '\n';
+                        continue;
+                    }
+
+                    const equalsIdx = trimmed.indexOf('=');
+                    if (equalsIdx > 0) {
+                        const key = trimmed.substring(0, equalsIdx).trim();
+                        // Expose key name, mask value
+                        combinedContent += `${key}=<HIDDEN_BY_VIBEGUARD>\n`;
+                    } else {
+                        combinedContent += line + ' # <Warning: Unparsed Line>\n';
+                    }
                 }
 
-                // Naive parsing KEY=VALUE
-                const parts = trimmed.split('=');
-                if (parts.length >= 2) {
-                    const key = parts[0].trim();
-                    // Redact the value part
-                    redactedContent += `${key}=<HIDDEN_BY_VIBEGUARD>\n`;
-                } else {
-                    redactedContent += line + '\n';
-                }
+                Logger.info(`ENV: Redacted ${relPath}`);
+            } catch (error) {
+                const errMsg = error instanceof Error ? error.message : String(error);
+                Logger.error(`ENV: Failed to read ${relPath}: ${errMsg}`);
+                combinedContent += `# Error reading file: ${errMsg}\n`;
             }
-
-            return redactedContent;
-        } catch (error) {
-            return `Error reading .env file: ${error}`;
         }
+
+        return combinedContent.trim();
     }
 }

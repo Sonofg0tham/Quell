@@ -3,3 +3,15 @@ out
 .vscode-test
 *.vsix
 .DS_Store
+
+# Environment files — NEVER commit secrets!
+.env
+.env.*
+.env.local
+.env.development
+.env.production
+.env.staging
+.env.test
+
+# Demo playground (contains intentional fake secrets for testing)
+playground/

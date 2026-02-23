@@ -1,111 +1,703 @@
 import * as vscode from 'vscode';
-import { SecretScanner } from './SecretScanner';
+import { SecretScanner, ScannerConfig, DEFAULT_CONFIG } from './SecretScanner';
 import { EnvManager } from './EnvManager';
+import { Logger } from './Logger';
+import { StatusBar } from './StatusBar';
+import { DecorationProvider } from './DecorationProvider';
+import { SidebarProvider } from './SidebarProvider';
+import { AiShieldManager } from './AiShieldManager';
 
-export function activate(extContext: vscode.ExtensionContext) {
-    // 1. Define the Chat Participant
-    const vibeguard = vscode.chat.createChatParticipant('vibeguard', async (request: vscode.ChatRequest, context: vscode.ChatContext, stream: vscode.ChatResponseStream, token: vscode.CancellationToken) => {
+// ─────────────────────────────────────────────────────
+//  Helper: Read VS Code settings into ScannerConfig
+// ─────────────────────────────────────────────────────
+function getConfig(): ScannerConfig {
+    const cfg = vscode.workspace.getConfiguration('vibeguard');
+    return {
+        enableEntropy: cfg.get<boolean>('enableEntropyScanning', DEFAULT_CONFIG.enableEntropy),
+        entropyThreshold: cfg.get<number>('entropyThreshold', DEFAULT_CONFIG.entropyThreshold),
+        minimumTokenLength: cfg.get<number>('minimumTokenLength', DEFAULT_CONFIG.minimumTokenLength),
+        customPatterns: cfg.get<Array<{ name: string; regex: string }>>('customPatterns', DEFAULT_CONFIG.customPatterns),
+        whitelistPatterns: cfg.get<string[]>('whitelistPatterns', DEFAULT_CONFIG.whitelistPatterns),
+    };
+}
 
-        const userPrompt = request.prompt;
 
-        // Command: /context (Custom command handling example)
-        if (request.command === 'context') {
-            const workspaceFolders = vscode.workspace.workspaceFolders;
-            if (!workspaceFolders) {
-                stream.markdown('No workspace folder open. Cannot read .env context.');
-                return { metadata: { command: 'no-workspace' } };
+// ═════════════════════════════════════════════════════
+//  Activation
+// ═════════════════════════════════════════════════════
+export function activate(context: vscode.ExtensionContext) {
+
+    // ── Initialise subsystems ────────────────
+    const outputChannel = Logger.init();
+    context.subscriptions.push(outputChannel);
+
+    StatusBar.init(context);
+    DecorationProvider.init(context);
+
+    // ── Sidebar Dashboard ────────────────
+    const sidebarProvider = new SidebarProvider(context.extensionUri);
+    context.subscriptions.push(
+        vscode.window.registerWebviewViewProvider('vibeguard.dashboard', sidebarProvider)
+    );
+
+    Logger.info(`Activated with ${SecretScanner.patternCount} built-in patterns.`);
+    Logger.info('Ready to intercept secrets in chat, files, and .env context.');
+
+    // ── AI Shield: restore previous session state ────────────
+    const workspacePath = vscode.workspace.workspaceFolders?.[0]?.uri?.fsPath;
+    if (workspacePath) {
+        const shieldOn = AiShieldManager.check(workspacePath);
+        StatusBar.setAiShield(shieldOn);
+        sidebarProvider.setAiShield(shieldOn);
+    }
+
+    // ── Vibe Check: first-install workspace scan ─────────────
+    const hasRunVibeCheck = context.globalState.get<boolean>('vibeguard.vibeCheckDone', false);
+    if (!hasRunVibeCheck && workspacePath) {
+        context.globalState.update('vibeguard.vibeCheckDone', true);
+        setTimeout(async () => {
+            const files = await vscode.workspace.findFiles(
+                '**/*.{ts,js,tsx,jsx,py,env,json,yml,yaml,toml}',
+                '{**/node_modules/**,**/.git/**,**/dist/**,**/out/**}'
+            );
+            const config = getConfig();
+            let totalSecrets = 0;
+            let fileCount = 0;
+            for (const uri of files.slice(0, 50)) {
+                try {
+                    const bytes = await vscode.workspace.fs.readFile(uri);
+                    const { secrets } = SecretScanner.redact(Buffer.from(bytes).toString('utf-8'), config);
+                    if (secrets.size > 0) { totalSecrets += secrets.size; fileCount++; }
+                } catch { /* skip */ }
+            }
+            if (totalSecrets > 0) {
+                Logger.warn(`VIBE CHECK: Found ${totalSecrets} potential secret(s) across ${fileCount} file(s).`);
+                vscode.window.showWarningMessage(
+                    `🛡️ VibeGuard Vibe Check: Found ${totalSecrets} exposed secret(s) in ${fileCount} file(s). Enable AI Shield to protect them.`,
+                    'Enable AI Shield', 'Scan Details'
+                ).then(choice => {
+                    if (choice === 'Enable AI Shield') { vscode.commands.executeCommand('vibeguard.enableAiShield'); }
+                    if (choice === 'Scan Details') { vscode.commands.executeCommand('vibeguard.scanWorkspace'); }
+                });
+                StatusBar.setExposureBadge(totalSecrets);
+            }
+        }, 3000);
+    }
+
+    // ─────────────────────────────────────────
+    // 1. Chat Participant
+    // ─────────────────────────────────────────
+    const vibeguard = vscode.chat.createChatParticipant(
+        'vibeguard',
+        async (request, _chatContext, stream, _token) => {
+
+            // ── /context command ──
+            if (request.command === 'context') {
+                const workspaceFolders = vscode.workspace.workspaceFolders;
+                if (!workspaceFolders) {
+                    stream.markdown('🚫 No workspace folder open. Cannot scan for `.env` files.');
+                    return;
+                }
+
+                StatusBar.setScanning();
+                stream.progress('Scanning workspace for configuration files…');
+
+                const redactedEnv = await EnvManager.getRedactedEnv();
+
+                stream.markdown('🛡️ **VibeGuard Context Scanner**\n\n');
+                stream.markdown('Below is a **redacted** view of your workspace environment files. ');
+                stream.markdown('Keys are visible so the AI understands the shape, but all values are masked.\n\n');
+                stream.markdown('```env\n' + redactedEnv + '\n```\n\n');
+                stream.markdown('> *Real values never leave your machine.*');
+
+                StatusBar.setSafe();
+                Logger.info('CHAT: Served redacted .env context.');
+                return;
             }
 
-            const redactedEnv = await EnvManager.getRedactedEnv(workspaceFolders[0].uri);
-            stream.markdown(`🛡️ **VibeGuard Context**\n\nHere is the safe version of your \`.env\` file:\n\n`);
-            stream.markdown('```env\n' + redactedEnv + '\n```');
-            return { metadata: { command: 'shared-context' } };
-        }
+            // ── Standard prompt processing ──
+            StatusBar.setScanning();
+            const userPrompt = request.prompt;
+            const config = getConfig();
+            const { redactedText, secrets, detectedTypes } = SecretScanner.redact(userPrompt, config);
 
-        // 2. Redact Secrets
-        const { redactedText, secrets } = SecretScanner.redact(userPrompt);
+            if (secrets.size > 0) {
+                // Store each secret securely in OS Keychain via VS Code SecretStorage
+                for (const [placeholder, secretValue] of secrets) {
+                    await context.secrets.store(placeholder, secretValue);
+                }
 
-        if (secrets.size > 0) {
-            // Securely store the secrets
-            for (const [placeholder, realValue] of secrets) {
-                await extContext.secrets.store(placeholder, realValue);
+                const typesList = Array.from(detectedTypes).join(', ');
+                Logger.scan('Chat Prompt', secrets.size, Array.from(detectedTypes));
+                Logger.redaction(secrets.size);
+                StatusBar.setAlert(secrets.size);
+
+                stream.markdown('🚨 **VibeGuard Security Intercept**\n\n');
+                stream.markdown(`I intercepted your prompt and found **${secrets.size}** sensitive item(s).\n\n`);
+                stream.markdown(`| Detail | Value |\n|---|---|\n`);
+                stream.markdown(`| **Detected** | ${typesList} |\n`);
+                stream.markdown(`| **Action** | Redacted & stored in OS Keychain |\n\n`);
+
+                stream.markdown('**Sanitised Payload:**\n');
+                stream.markdown('```\n' + redactedText + '\n```\n\n');
+
+                stream.markdown('---\n');
+                stream.markdown('> 💡 Paste the sanitised text into your editor, then use the button below to restore real values securely.\n\n');
+                stream.markdown('[$(key) Restore Secrets in Active File](command:vibeguard.restoreSecrets)\n');
+
+                return { metadata: { command: 'redacted' } };
             }
 
-            stream.markdown(`🛡️ **VibeGuard Secured**\n\nI detected **${secrets.size}** secret(s) and redacted them before processing.\n\n`);
-            stream.markdown(`**Sanitized Prompt Sent:**\n> ${redactedText}\n\n`);
-            stream.markdown(`Use the command \`VibeGuard: Restore Secrets\` to reveal them in your active file if needed.`);
+            // Clean — no secrets found
+            StatusBar.setSafe();
+            Logger.scan('Chat Prompt', 0, []);
 
-            // In a real app, you would send 'redactedText' to the LLM here.
-            // For this demo, we just echo it.
-            return { metadata: { command: 'redacted-echo' } };
+            stream.markdown('🛡️ **VibeGuard — All Clear**\n\n');
+            stream.markdown('No secrets detected in your prompt. Safe to proceed.\n\n');
+            stream.markdown('> ' + userPrompt);
+
+            return { metadata: { command: 'echo' } };
         }
+    );
 
-        // 3. Echo Mode (if safe)
-        stream.markdown(`🛡️ **VibeGuard Echo Mode**\n\nNo secrets detected. You sent: \n> ${userPrompt}`);
+    vibeguard.iconPath = new vscode.ThemeIcon('shield');
+    context.subscriptions.push(vibeguard);
 
-        return { metadata: { command: 'echo' } };
-    });
 
-    extContext.subscriptions.push(vibeguard);
-
-    // 4. Register Restore Command
-    let restoreDisposable = vscode.commands.registerCommand('vibeguard.restoreSecrets', async () => {
+    // ─────────────────────────────────────────
+    // 2. Command: Restore Secrets
+    // ─────────────────────────────────────────
+    const restoreCmd = vscode.commands.registerCommand('vibeguard.restoreSecrets', async () => {
         const editor = vscode.window.activeTextEditor;
         if (!editor) {
-            vscode.window.showErrorMessage('No active editor found to restore secrets into.');
+            vscode.window.showErrorMessage('VibeGuard: No active editor. Open the file containing placeholders first.');
             return;
         }
 
         const document = editor.document;
-        const fullText = document.getText();
-        let restoredText = fullText;
+        const text = document.getText();
+        const placeholderRegex = /{{SECRET_[a-z0-9]+}}/g;
+        const matches = text.match(placeholderRegex);
+
+        if (!matches) {
+            vscode.window.showInformationMessage('🛡️ VibeGuard: No placeholders found in this file.');
+            return;
+        }
+
+        let restoredText = text;
         let restoredCount = 0;
+        const uniqueMatches = [...new Set(matches)];
 
-        // Naive scan for any {{SECRET_X}} pattern in the file
-        const secretRegex = /\{\{SECRET_\d+\}\}/g;
-        const matches = fullText.match(secretRegex);
-
-        if (matches) {
-            // We use a Set to avoid replacing the same placeholder multiple times redundantly,
-            // though string.replace only does one at a time unless global regex used.
-            // Better: Iterate unique placeholders.
-            const uniquePlaceholders = [...new Set(matches)];
-
-            for (const placeholder of uniquePlaceholders) {
-                const realValue = await extContext.secrets.get(placeholder);
+        await vscode.window.withProgress({
+            location: vscode.ProgressLocation.Notification,
+            title: '🛡️ VibeGuard — Restoring Secrets',
+            cancellable: false,
+        }, async () => {
+            for (const placeholder of uniqueMatches) {
+                const realValue = await context.secrets.get(placeholder);
                 if (realValue) {
-                    // Global replace for this specific placeholder
-                    // Escape braces for regex
-                    const escapedPlaceholder = placeholder.replace(/\{/g, '\\{').replace(/\}/g, '\\}');
-                    const currentPlaceholderRegex = new RegExp(escapedPlaceholder, 'g');
-
-                    // Check if it's still in the text (could have been part of another replacement, unlikely with this format)
-                    if (currentPlaceholderRegex.test(restoredText)) {
-                        // Count occurrences
-                        const count = (restoredText.match(currentPlaceholderRegex) || []).length;
-                        restoredText = restoredText.replace(currentPlaceholderRegex, realValue);
+                    const count = restoredText.split(placeholder).length - 1;
+                    if (count > 0) {
+                        restoredText = restoredText.split(placeholder).join(realValue);
                         restoredCount += count;
                     }
                 }
             }
+
+            if (restoredCount > 0) {
+                const fullRange = new vscode.Range(
+                    document.positionAt(0),
+                    document.positionAt(text.length)
+                );
+                await editor.edit((editBuilder) => editBuilder.replace(fullRange, restoredText));
+
+                vscode.window.showInformationMessage(`🛡️ VibeGuard: Restored ${restoredCount} secret(s) successfully.`);
+                Logger.restore(restoredCount);
+                DecorationProvider.updateDecorations(editor);
+                sidebarProvider.refresh();
+            } else {
+                vscode.window.showWarningMessage(
+                    'VibeGuard: Found placeholders but could not retrieve values. ' +
+                    'They may have expired or been stored in a different session.'
+                );
+            }
+        });
+    });
+
+
+    // ─────────────────────────────────────────
+    // 3. Command: Redact Active File
+    // ─────────────────────────────────────────
+    const redactFileCmd = vscode.commands.registerCommand('vibeguard.redactActiveFile', async () => {
+        const editor = vscode.window.activeTextEditor;
+        if (!editor) {
+            vscode.window.showErrorMessage('VibeGuard: No active editor found.');
+            return;
         }
 
-        if (restoredCount > 0) {
-            const fullRange = new vscode.Range(
-                document.positionAt(0),
-                document.positionAt(fullText.length)
+        const document = editor.document;
+        const text = document.getText();
+        const config = getConfig();
+
+        StatusBar.setScanning();
+        const { redactedText, secrets, detectedTypes } = SecretScanner.redact(text, config);
+
+        if (secrets.size === 0) {
+            vscode.window.showInformationMessage('🛡️ VibeGuard: No secrets found in this file.');
+            StatusBar.setSafe();
+            Logger.scan('Redact File', 0, []);
+            return;
+        }
+
+        // ── Confirmation dialog (configurable) ──
+        const confirmEnabled = vscode.workspace.getConfiguration('vibeguard').get<boolean>('confirmBeforeRedact', true);
+        if (confirmEnabled) {
+            const typesList = Array.from(detectedTypes).join(', ');
+            const choice = await vscode.window.showWarningMessage(
+                `VibeGuard found ${secrets.size} secret(s) [${typesList}]. Redact them now?`,
+                { modal: true, detail: 'Real values will be stored in your OS Keychain and replaced with safe placeholders.' },
+                'Redact', 'Cancel'
+            );
+            if (choice !== 'Redact') {
+                StatusBar.setIdle();
+                return;
+            }
+        }
+
+        // Store secrets securely
+        for (const [placeholder, secretValue] of secrets) {
+            await context.secrets.store(placeholder, secretValue);
+        }
+
+        // Apply redaction to the editor
+        const fullRange = new vscode.Range(
+            document.positionAt(0),
+            document.positionAt(text.length)
+        );
+        await editor.edit((editBuilder) => editBuilder.replace(fullRange, redactedText));
+
+        const typesList = Array.from(detectedTypes).join(', ');
+        vscode.window.showInformationMessage(
+            `🛡️ VibeGuard: Redacted ${secrets.size} secret(s) [${typesList}]. ` +
+            `Run "VibeGuard: Restore Secrets" to bring them back.`
+        );
+
+        StatusBar.setAlert(secrets.size);
+        Logger.scan('Redact File', secrets.size, Array.from(detectedTypes));
+        Logger.redaction(secrets.size);
+        DecorationProvider.updateDecorations(editor);
+        sidebarProvider.recordScan(secrets.size);
+    });
+
+
+    // ─────────────────────────────────────────
+    // 4. Command: Redact Selection
+    // ─────────────────────────────────────────
+    const redactSelectionCmd = vscode.commands.registerCommand('vibeguard.redactSelection', async () => {
+        const editor = vscode.window.activeTextEditor;
+        if (!editor) {
+            vscode.window.showErrorMessage('VibeGuard: No active editor found.');
+            return;
+        }
+
+        const selection = editor.selection;
+        if (selection.isEmpty) {
+            vscode.window.showInformationMessage('VibeGuard: No text selected.');
+            return;
+        }
+
+        const selectedText = editor.document.getText(selection);
+        const config = getConfig();
+
+        StatusBar.setScanning();
+        const { redactedText, secrets, detectedTypes } = SecretScanner.redact(selectedText, config);
+
+        if (secrets.size === 0) {
+            vscode.window.showInformationMessage('🛡️ VibeGuard: No secrets found in selection.');
+            StatusBar.setSafe();
+            return;
+        }
+
+        // Store & replace
+        for (const [placeholder, secretValue] of secrets) {
+            await context.secrets.store(placeholder, secretValue);
+        }
+
+        await editor.edit((editBuilder) => editBuilder.replace(selection, redactedText));
+
+        const typesList = Array.from(detectedTypes).join(', ');
+        vscode.window.showInformationMessage(
+            `🛡️ VibeGuard: Redacted ${secrets.size} secret(s) in selection [${typesList}].`
+        );
+
+        StatusBar.setAlert(secrets.size);
+        Logger.scan('Selection', secrets.size, Array.from(detectedTypes));
+        Logger.redaction(secrets.size);
+        DecorationProvider.updateDecorations(editor);
+        sidebarProvider.recordScan(secrets.size);
+    });
+
+
+    // ─────────────────────────────────────────
+    // 5. Command: Scan Workspace
+    // ─────────────────────────────────────────
+    const scanWorkspaceCmd = vscode.commands.registerCommand('vibeguard.scanWorkspace', async () => {
+        const folders = vscode.workspace.workspaceFolders;
+        if (!folders) {
+            vscode.window.showErrorMessage('VibeGuard: No workspace folder open.');
+            return;
+        }
+
+        const config = getConfig();
+        let totalSecrets = 0;
+        const allTypes = new Set<string>();
+        const findings: Array<{ file: string; count: number; types: string[] }> = [];
+
+        await vscode.window.withProgress({
+            location: vscode.ProgressLocation.Notification,
+            title: '🛡️ VibeGuard — Scanning Workspace',
+            cancellable: true,
+        }, async (progress, token) => {
+            const files = await vscode.workspace.findFiles(
+                '**/*.{ts,js,tsx,jsx,py,rb,go,java,cs,php,env,yaml,yml,json,toml,ini,cfg,conf,xml,properties}',
+                '{**/node_modules/**,**/.git/**,**/dist/**,**/build/**,**/out/**,**/*.min.*}'
             );
 
-            await editor.edit(editBuilder => {
-                editBuilder.replace(fullRange, restoredText);
-            });
-            vscode.window.showInformationMessage(`Restored ${restoredCount} secrets successfully.`);
+            const total = files.length;
+            let processed = 0;
+
+            for (const uri of files) {
+                if (token.isCancellationRequested) { break; }
+
+                processed++;
+                progress.report({
+                    message: `${processed}/${total} files…`,
+                    increment: (1 / total) * 100,
+                });
+
+                try {
+                    const rawBytes = await vscode.workspace.fs.readFile(uri);
+                    const content = Buffer.from(rawBytes).toString('utf-8');
+                    const { secrets, detectedTypes } = SecretScanner.redact(content, config);
+
+                    if (secrets.size > 0) {
+                        const relPath = vscode.workspace.asRelativePath(uri);
+                        totalSecrets += secrets.size;
+                        const typesArr = Array.from(detectedTypes);
+                        typesArr.forEach((t) => allTypes.add(t));
+                        findings.push({ file: relPath, count: secrets.size, types: typesArr });
+                    }
+                } catch {
+                    // Skip unreadable files
+                }
+            }
+        });
+
+        if (totalSecrets === 0) {
+            vscode.window.showInformationMessage('🛡️ VibeGuard: Workspace is clean — no secrets detected!');
+            StatusBar.setSafe();
+            Logger.scan('Workspace', 0, []);
+            sidebarProvider.recordScan(0);
         } else {
-            vscode.window.showInformationMessage('No active secrets found to restore.');
+            // Show detailed findings in output channel
+            Logger.warn(`WORKSPACE SCAN: Found ${totalSecrets} potential secret(s) in ${findings.length} file(s):`);
+            for (const f of findings) {
+                Logger.warn(`  📄 ${f.file}: ${f.count} secret(s) [${f.types.join(', ')}]`);
+            }
+            Logger.show();
+
+            StatusBar.setAlert(totalSecrets);
+            sidebarProvider.recordScan(totalSecrets, findings);
+            vscode.window.showWarningMessage(
+                `VibeGuard: Found ${totalSecrets} potential secret(s) in ${findings.length} file(s). See Output panel for details.`,
+                'Show Log'
+            ).then((choice) => {
+                if (choice === 'Show Log') { Logger.show(); }
+            });
         }
     });
 
-    extContext.subscriptions.push(restoreDisposable);
+
+    // ─────────────────────────────────────────
+    // 6. Command: Show Log
+    // ─────────────────────────────────────────
+    const showLogCmd = vscode.commands.registerCommand('vibeguard.showLog', () => {
+        Logger.show();
+    });
+
+
+    // ─────────────────────────────────────────
+    // 7. Hover Provider for Placeholders
+    // ─────────────────────────────────────────
+    const hoverProvider = vscode.languages.registerHoverProvider('*', {
+        provideHover(document, position) {
+            const range = document.getWordRangeAtPosition(position, /{{SECRET_[a-z0-9]+}}/);
+            if (range) {
+                const md = new vscode.MarkdownString();
+                md.isTrusted = true;
+                md.supportHtml = true;
+                md.appendMarkdown('### 🛡️ VibeGuard Secure Placeholder\n\n');
+                md.appendMarkdown('This value has been redacted and stored in your **OS Keychain**.\n\n');
+                md.appendMarkdown('| | |\n|---|---|\n');
+                md.appendMarkdown('| **Status** | 🔒 Encrypted in vault |\n');
+                md.appendMarkdown('| **Scope** | This VS Code session |\n\n');
+                md.appendMarkdown('[$(key) Restore Secrets](command:vibeguard.restoreSecrets "Restore all secrets in this file")');
+                return new vscode.Hover(md, range);
+            }
+        },
+    });
+
+
+    // ─────────────────────────────────────────
+    // 8. File Save Watcher (warns on saving
+    //    files that still contain raw secrets)
+    // ─────────────────────────────────────────
+    const saveWatcher = vscode.workspace.onWillSaveTextDocument((event) => {
+        const config = getConfig();
+        const text = event.document.getText();
+        const { secrets, detectedTypes } = SecretScanner.redact(text, config);
+
+        if (secrets.size > 0) {
+            const typesList = Array.from(detectedTypes).join(', ');
+            Logger.warn(`SAVE WARNING: ${vscode.workspace.asRelativePath(event.document.uri)} contains ${secrets.size} potential secret(s) [${typesList}]`);
+
+            // Show a non-blocking warning — we don't want to prevent saves
+            vscode.window.showWarningMessage(
+                `🛡️ VibeGuard: This file may contain ${secrets.size} secret(s) [${typesList}]. ` +
+                `Consider running "VibeGuard: Redact Active File" before sharing.`,
+                'Redact Now', 'Dismiss'
+            ).then((choice) => {
+                if (choice === 'Redact Now') {
+                    vscode.commands.executeCommand('vibeguard.redactActiveFile');
+                }
+            });
+        }
+    });
+
+
+    // ─────────────────────────────────────────
+    // 10. Command: Refresh Sidebar
+    // ─────────────────────────────────────────
+    const refreshSidebarCmd = vscode.commands.registerCommand('vibeguard.refreshSidebar', () => {
+        sidebarProvider.refresh();
+    });
+
+
+    // ─────────────────────────────────────────
+    // 11. Command: Sanitized Paste (Ctrl+Shift+V)
+    //     Reads clipboard, strips secrets, pastes
+    //     clean text into the active editor.
+    //     Works with ANY chat interface!
+    // ─────────────────────────────────────────
+    const sanitizedPasteCmd = vscode.commands.registerCommand('vibeguard.sanitizedPaste', async () => {
+        const editor = vscode.window.activeTextEditor;
+        if (!editor) {
+            vscode.window.showErrorMessage('VibeGuard: No active editor to paste into.');
+            return;
+        }
+
+        const clipboardText = await vscode.env.clipboard.readText();
+        if (!clipboardText) {
+            vscode.window.showInformationMessage('VibeGuard: Clipboard is empty.');
+            return;
+        }
+
+        const config = getConfig();
+        StatusBar.setScanning();
+        const { redactedText, secrets, detectedTypes } = SecretScanner.redact(clipboardText, config);
+
+        if (secrets.size > 0) {
+            // Store secrets in keychain
+            for (const [placeholder, secretValue] of secrets) {
+                await context.secrets.store(placeholder, secretValue);
+            }
+
+            // Paste the sanitized version
+            await editor.edit((editBuilder) => {
+                editBuilder.replace(editor.selection, redactedText);
+            });
+
+            const typesList = Array.from(detectedTypes).join(', ');
+            vscode.window.showWarningMessage(
+                `🛡️ VibeGuard: Intercepted ${secrets.size} secret(s) from clipboard [${typesList}]. Pasted sanitized version.`,
+                'Show Log'
+            ).then((choice) => {
+                if (choice === 'Show Log') { Logger.show(); }
+            });
+
+            StatusBar.setAlert(secrets.size);
+            Logger.scan('Sanitized Paste', secrets.size, Array.from(detectedTypes));
+            Logger.redaction(secrets.size);
+            sidebarProvider.recordScan(secrets.size);
+        } else {
+            // No secrets — paste as normal
+            await editor.edit((editBuilder) => {
+                editBuilder.replace(editor.selection, clipboardText);
+            });
+
+            StatusBar.setSafe();
+            Logger.scan('Sanitized Paste', 0, []);
+        }
+
+        DecorationProvider.updateDecorations(editor);
+    });
+
+
+    // ─────────────────────────────────────────
+    // 12. Command: Copy Redacted
+    //     Takes selected text (or entire file),
+    //     scans it, puts redacted version on
+    //     clipboard. User can then safely paste
+    //     into any AI chat.
+    // ─────────────────────────────────────────
+    const copyRedactedCmd = vscode.commands.registerCommand('vibeguard.copyRedacted', async () => {
+        const editor = vscode.window.activeTextEditor;
+        if (!editor) {
+            vscode.window.showErrorMessage('VibeGuard: No active editor.');
+            return;
+        }
+
+        // Use selection if available, otherwise entire file
+        const selection = editor.selection;
+        const text = selection.isEmpty
+            ? editor.document.getText()
+            : editor.document.getText(selection);
+
+        const config = getConfig();
+        StatusBar.setScanning();
+        const { redactedText, secrets, detectedTypes } = SecretScanner.redact(text, config);
+
+        if (secrets.size > 0) {
+            // Store secrets in keychain for later restore
+            for (const [placeholder, secretValue] of secrets) {
+                await context.secrets.store(placeholder, secretValue);
+            }
+
+            await vscode.env.clipboard.writeText(redactedText);
+
+            const typesList = Array.from(detectedTypes).join(', ');
+            vscode.window.showInformationMessage(
+                `🛡️ VibeGuard: Copied redacted text to clipboard — ${secrets.size} secret(s) removed [${typesList}]. Safe to paste into AI chat!`
+            );
+
+            StatusBar.setAlert(secrets.size);
+            Logger.scan('Copy Redacted', secrets.size, Array.from(detectedTypes));
+            Logger.redaction(secrets.size);
+            sidebarProvider.recordScan(secrets.size);
+        } else {
+            // No secrets — copy as-is
+            await vscode.env.clipboard.writeText(text);
+            vscode.window.showInformationMessage('🛡️ VibeGuard: No secrets detected. Copied to clipboard as-is.');
+            StatusBar.setSafe();
+            Logger.scan('Copy Redacted', 0, []);
+        }
+    });
+
+
+    // ─────────────────────────────────────────
+    // 14. Command: Enable AI Shield
+    // ─────────────────────────────────────────
+    const enableAiShieldCmd = vscode.commands.registerCommand('vibeguard.enableAiShield', () => {
+        if (!workspacePath) {
+            vscode.window.showErrorMessage('VibeGuard: No workspace folder open.');
+            return;
+        }
+        const created = AiShieldManager.enable(workspacePath);
+        StatusBar.setAiShield(true);
+        sidebarProvider.setAiShield(true);
+        Logger.info(`AI Shield ENABLED — injected patterns into ${created} ignore file(s).`);
+        vscode.window.showInformationMessage(
+            `🛡️ VibeGuard AI Shield ON — AI indexers are now blocked from reading your secret files in ${created} ignore file(s).`
+        );
+    });
+
+    // ─────────────────────────────────────────
+    // 15. Command: Disable AI Shield
+    // ─────────────────────────────────────────
+    const disableAiShieldCmd = vscode.commands.registerCommand('vibeguard.disableAiShield', () => {
+        if (!workspacePath) {
+            vscode.window.showErrorMessage('VibeGuard: No workspace folder open.');
+            return;
+        }
+        AiShieldManager.disable(workspacePath);
+        StatusBar.setAiShield(false);
+        sidebarProvider.setAiShield(false);
+        Logger.info('AI Shield DISABLED.');
+        vscode.window.showInformationMessage('🛡️ VibeGuard AI Shield OFF — AI indexers can now access all files.');
+    });
+
+    // ─────────────────────────────────────────
+    // 16. Clipboard Sentry
+    //     Polls clipboard every 3s when window
+    //     is focused. Warns if a secret is
+    //     detected, without touching the data.
+    // ─────────────────────────────────────────
+    let lastClipboardText = '';
+    let clipboardWarningActive = false;
+    const clipboardSentryInterval = setInterval(async () => {
+        if (!vscode.window.state.focused) { return; }
+        try {
+            const text = await vscode.env.clipboard.readText();
+            if (!text || text === lastClipboardText) { return; }
+            lastClipboardText = text;
+            const config = getConfig();
+            const { secrets, detectedTypes } = SecretScanner.redact(text, config);
+            if (secrets.size > 0 && !clipboardWarningActive) {
+                clipboardWarningActive = true;
+                sidebarProvider.setClipboardWarning(true);
+                const typesList = Array.from(detectedTypes).join(', ');
+                Logger.warn(`CLIPBOARD SENTRY: Detected ${secrets.size} secret(s) on clipboard [${typesList}]. Use Ctrl+Shift+C to safely copy.`);
+                vscode.window.showWarningMessage(
+                    `⚠️ VibeGuard: Secret detected on clipboard [${typesList}]. Use Ctrl+Shift+C to copy safely for AI chat!`,
+                    'How?'
+                ).then(choice => {
+                    clipboardWarningActive = false;
+                    sidebarProvider.setClipboardWarning(false);
+                    if (choice === 'How?') {
+                        vscode.window.showInformationMessage(
+                            '1. Select the text in your editor.\n2. Press Ctrl+Shift+C (Copy Redacted).\n3. Paste into AI chat — secrets are replaced with safe placeholders.'
+                        );
+                    }
+                });
+            } else if (secrets.size === 0) {
+                if (clipboardWarningActive) {
+                    clipboardWarningActive = false;
+                    sidebarProvider.setClipboardWarning(false);
+                }
+            }
+        } catch { /* clipboard read failures are silent */ }
+    }, 3000);
+    context.subscriptions.push({ dispose: () => clearInterval(clipboardSentryInterval) });
+
+
+    // ─────────────────────────────────────────
+    // 13. Register all subscriptions
+    // ─────────────────────────────────────────
+    context.subscriptions.push(
+        restoreCmd,
+        redactFileCmd,
+        redactSelectionCmd,
+        scanWorkspaceCmd,
+        showLogCmd,
+        refreshSidebarCmd,
+        sanitizedPasteCmd,
+        copyRedactedCmd,
+        enableAiShieldCmd,
+        disableAiShieldCmd,
+        hoverProvider,
+        saveWatcher,
+    );
+
+
+    // Welcome toast on first activation
+    Logger.info('All systems operational. Your secrets are protected.');
 }
 
-export function deactivate() { }
+
+// ═════════════════════════════════════════════════════
+//  Deactivation
+// ═════════════════════════════════════════════════════
+export function deactivate() {
+    DecorationProvider.dispose();
+    Logger.dispose();
+}

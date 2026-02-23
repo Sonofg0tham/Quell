@@ -1,28 +1,68 @@
 {
     "name": "vibeguard",
     "displayName": "VibeGuard",
-    "description": "Prevent secret leakage in AI chats",
-    "version": "0.0.1",
-    "publisher": "craigmccart",
+    "description": "Prevent secret leakage in AI chats — intercepts prompts, redacts API keys/tokens/passwords, and stores them securely in your OS Keychain. Zero network calls, fully offline.",
+    "version": "1.5.0",
+    "publisher": "vibeguard-team",
+    "icon": "assets/icon.png",
+    "license": "MIT",
+    "repository": {
+        "type": "git",
+        "url": "https://github.com/vibeguard-team/vibeguard"
+    },
     "engines": {
-        "vscode": "^1.86.0"
+        "vscode": "^1.85.0"
     },
     "categories": [
+        "Chat",
+        "Linters",
         "Other"
     ],
-    "activationEvents": [],
+    "keywords": [
+        "security",
+        "secrets",
+        "ai",
+        "chat",
+        "redaction",
+        "api-keys",
+        "leak-prevention",
+        "copilot",
+        "privacy"
+    ],
+    "activationEvents": [
+        "onStartupFinished"
+    ],
     "main": "./out/extension.js",
     "contributes": {
+        "viewsContainers": {
+            "activitybar": [
+                {
+                    "id": "vibeguard-sidebar",
+                    "title": "VibeGuard",
+                    "icon": "assets/vibeguard-sidebar.svg"
+                }
+            ]
+        },
+        "views": {
+            "vibeguard-sidebar": [
+                {
+                    "id": "vibeguard.dashboard",
+                    "name": "Dashboard",
+                    "type": "webview",
+                    "icon": "assets/vibeguard-sidebar.svg"
+                }
+            ]
+        },
         "chatParticipants": [
             {
                 "id": "vibeguard",
                 "name": "vibeguard",
-                "description": "I'll help you scrub secrets before you send them to the AI.",
+                "description": "I act as your AI security proxy. Talk to me, and I'll scrub your prompts before evaluating them.",
                 "isSticky": true,
                 "commands": [
                     {
                         "name": "context",
-                        "description": "Share a redacted version of your .env file"
+                        "description": "Share a redacted version of your workspace .env files securely."
                     }
                 ]
             }
@@ -30,21 +70,205 @@
         "commands": [
             {
                 "command": "vibeguard.restoreSecrets",
-                "title": "VibeGuard: Restore Secrets"
+                "title": "Restore Secrets in Active File",
+                "category": "VibeGuard",
+                "icon": "$(key)"
+            },
+            {
+                "command": "vibeguard.redactActiveFile",
+                "title": "Redact Secrets in Active File",
+                "category": "VibeGuard",
+                "icon": "$(shield)"
+            },
+            {
+                "command": "vibeguard.redactSelection",
+                "title": "Redact Secrets in Selection",
+                "category": "VibeGuard",
+                "icon": "$(shield)"
+            },
+            {
+                "command": "vibeguard.scanWorkspace",
+                "title": "Scan Workspace for Secrets",
+                "category": "VibeGuard",
+                "icon": "$(search)"
+            },
+            {
+                "command": "vibeguard.showLog",
+                "title": "Show VibeGuard Log",
+                "category": "VibeGuard",
+                "icon": "$(output)"
+            },
+            {
+                "command": "vibeguard.refreshSidebar",
+                "title": "Refresh Sidebar",
+                "category": "VibeGuard",
+                "icon": "$(refresh)"
+            },
+            {
+                "command": "vibeguard.sanitizedPaste",
+                "title": "Sanitized Paste (Strip Secrets)",
+                "category": "VibeGuard",
+                "icon": "$(clippy)"
+            },
+            {
+                "command": "vibeguard.copyRedacted",
+                "title": "Copy Redacted to Clipboard",
+                "category": "VibeGuard",
+                "icon": "$(copy)"
+            },
+            {
+                "command": "vibeguard.enableAiShield",
+                "title": "Enable AI Indexing Shield",
+                "category": "VibeGuard",
+                "icon": "$(shield)"
+            },
+            {
+                "command": "vibeguard.disableAiShield",
+                "title": "Disable AI Indexing Shield",
+                "category": "VibeGuard",
+                "icon": "$(shield)"
             }
-        ]
+        ],
+        "keybindings": [
+            {
+                "command": "vibeguard.sanitizedPaste",
+                "key": "ctrl+shift+v",
+                "mac": "cmd+shift+v",
+                "when": "editorTextFocus"
+            },
+            {
+                "command": "vibeguard.copyRedacted",
+                "key": "ctrl+shift+c",
+                "mac": "cmd+shift+c",
+                "when": "editorTextFocus"
+            }
+        ],
+        "menus": {
+            "view/title": [
+                {
+                    "command": "vibeguard.refreshSidebar",
+                    "when": "view == vibeguard.dashboard",
+                    "group": "navigation"
+                },
+                {
+                    "command": "vibeguard.scanWorkspace",
+                    "when": "view == vibeguard.dashboard",
+                    "group": "navigation"
+                }
+            ],
+            "editor/context": [
+                {
+                    "command": "vibeguard.copyRedacted",
+                    "when": "editorHasSelection",
+                    "group": "vibeguard@0"
+                },
+                {
+                    "command": "vibeguard.redactSelection",
+                    "when": "editorHasSelection",
+                    "group": "vibeguard@1"
+                },
+                {
+                    "command": "vibeguard.redactActiveFile",
+                    "group": "vibeguard@2"
+                },
+                {
+                    "command": "vibeguard.restoreSecrets",
+                    "group": "vibeguard@3"
+                }
+            ],
+            "commandPalette": [
+                {
+                    "command": "vibeguard.redactSelection",
+                    "when": "editorHasSelection"
+                },
+                {
+                    "command": "vibeguard.refreshSidebar",
+                    "when": "false"
+                }
+            ]
+        },
+        "configuration": {
+            "title": "VibeGuard",
+            "properties": {
+                "vibeguard.enableEntropyScanning": {
+                    "type": "boolean",
+                    "default": true,
+                    "description": "Enable Shannon Entropy analysis to catch high-randomness tokens that regex alone might miss.",
+                    "order": 1
+                },
+                "vibeguard.entropyThreshold": {
+                    "type": "number",
+                    "default": 4.5,
+                    "minimum": 2.0,
+                    "maximum": 7.0,
+                    "description": "Minimum Shannon Entropy to flag a token (higher = fewer false positives, lower = more aggressive). Typical API keys score 4.5–6.0.",
+                    "order": 2
+                },
+                "vibeguard.minimumTokenLength": {
+                    "type": "number",
+                    "default": 20,
+                    "minimum": 8,
+                    "maximum": 100,
+                    "description": "Minimum character length for a token to be considered by entropy scanning.",
+                    "order": 3
+                },
+                "vibeguard.customPatterns": {
+                    "type": "array",
+                    "default": [],
+                    "description": "Additional custom regex patterns for secret detection. Each entry needs a 'name' and 'regex' field.",
+                    "items": {
+                        "type": "object",
+                        "properties": {
+                            "name": {
+                                "type": "string",
+                                "description": "Human-readable name for this pattern (e.g. 'Internal API Key')"
+                            },
+                            "regex": {
+                                "type": "string",
+                                "description": "Regex pattern string (without delimiters)"
+                            }
+                        },
+                        "required": [
+                            "name",
+                            "regex"
+                        ]
+                    },
+                    "order": 4
+                },
+                "vibeguard.whitelistPatterns": {
+                    "type": "array",
+                    "default": [],
+                    "description": "Regex patterns for values that should NOT be flagged as secrets (e.g. known-safe test tokens).",
+                    "items": {
+                        "type": "string"
+                    },
+                    "order": 5
+                },
+                "vibeguard.showInlineDecorations": {
+                    "type": "boolean",
+                    "default": true,
+                    "description": "Show inline editor decorations (orange border + lock icon) for VibeGuard placeholders.",
+                    "order": 6
+                },
+                "vibeguard.confirmBeforeRedact": {
+                    "type": "boolean",
+                    "default": true,
+                    "description": "Show a confirmation dialog before redacting secrets in the active file.",
+                    "order": 7
+                }
+            }
+        }
     },
     "scripts": {
         "vscode:prepublish": "npm run compile",
         "compile": "tsc -p ./",
-        "watch": "tsc -watch -p ./"
+        "watch": "tsc -watch -p ./",
+        "test": "tsc -p ./tsconfig.test.json && node out/test/SecretScanner.test.js"
     },
     "devDependencies": {
-        "@types/vscode": "^1.86.0",
+        "@types/vscode": "^1.85.0",
         "@types/node": "20.x",
         "typescript": "^5.3.3"
     },
-    "dependencies": {
-        "dotenv": "^16.4.5"
-    }
+    "dependencies": {}
 }
