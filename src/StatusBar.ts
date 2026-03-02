@@ -2,7 +2,7 @@ import * as vscode from 'vscode';
 import { Logger } from './Logger';
 
 /**
- * Manages the VibeGuard status bar indicator.
+ * Manages the VyberGuard status bar indicator.
  * States: idle → scanning → alert/safe → ai-shield-on
  */
 export class StatusBar {
@@ -17,7 +17,7 @@ export class StatusBar {
             vscode.StatusBarAlignment.Right,
             1000
         );
-        this.item.command = 'vibeguard.showLog';
+        this.item.command = 'vyberguard.showLog';
         this.setIdle();
         this.item.show();
         context.subscriptions.push(this.item);
@@ -27,18 +27,18 @@ export class StatusBar {
     public static setIdle(): void {
         this.clearTimer();
         if (this._aiShieldActive) {
-            this.item.text = '$(shield) VibeGuard  🛡 AI Shield ON';
+            this.item.text = '$(shield) VyberGuard  🛡 AI Shield ON';
             this.item.tooltip = `🛡️ AI Shield is ACTIVE\nSecret files are hidden from AI indexers.\n\n${Logger.statsLine()}`;
             this.item.color = '#2DD4BF'; // Vivid teal = shielded
             this.item.backgroundColor = undefined;
         } else if (this._rawSecretCount > 0) {
-            this.item.text = `$(shield) VibeGuard  ⚠ ${this._rawSecretCount} exposed`;
-            this.item.tooltip = `⚠️ ${this._rawSecretCount} raw secret(s) detected in workspace.\nClick to view VibeGuard log.\n\n${Logger.statsLine()}`;
+            this.item.text = `$(shield) VyberGuard  ⚠ ${this._rawSecretCount} exposed`;
+            this.item.tooltip = `⚠️ ${this._rawSecretCount} raw secret(s) detected in workspace.\nClick to view VyberGuard log.\n\n${Logger.statsLine()}`;
             this.item.color = '#FBBF24'; // Amber = exposed but not alerted
             this.item.backgroundColor = undefined;
         } else {
-            this.item.text = '$(shield) VibeGuard';
-            this.item.tooltip = `🛡️ VibeGuard is active\n${Logger.statsLine()}`;
+            this.item.text = '$(shield) VyberGuard';
+            this.item.tooltip = `🛡️ VyberGuard is active\n${Logger.statsLine()}`;
             this.item.color = undefined;
             this.item.backgroundColor = undefined;
         }
@@ -48,7 +48,7 @@ export class StatusBar {
     public static setScanning(): void {
         this.clearTimer();
         this.item.text = '$(loading~spin) Scanning…';
-        this.item.tooltip = 'VibeGuard is scanning for secrets…';
+        this.item.tooltip = 'VyberGuard is scanning for secrets…';
         this.item.color = undefined;
         this.item.backgroundColor = undefined;
     }
@@ -57,8 +57,8 @@ export class StatusBar {
     public static setAlert(secretCount: number): void {
         this.clearTimer();
         this.scanCount++;
-        this.item.text = `$(shield) VibeGuard — ${secretCount} secret(s) intercepted!`;
-        this.item.tooltip = `⚠️ ${secretCount} secret(s) detected and redacted.\nClick to view the VibeGuard log.\n\n${Logger.statsLine()}`;
+        this.item.text = `$(shield) VyberGuard — ${secretCount} secret(s) intercepted!`;
+        this.item.tooltip = `⚠️ ${secretCount} secret(s) detected and redacted.\nClick to view the VyberGuard log.\n\n${Logger.statsLine()}`;
         this.item.backgroundColor = new vscode.ThemeColor('statusBarItem.warningBackground');
         this.item.color = undefined;
         this.resetTimer = setTimeout(() => this.setIdle(), 8000);
@@ -68,7 +68,7 @@ export class StatusBar {
     public static setSafe(): void {
         this.clearTimer();
         this.scanCount++;
-        this.item.text = '$(shield) VibeGuard ✓ Clean';
+        this.item.text = '$(shield) VyberGuard ✓ Clean';
         this.item.tooltip = `✅ No secrets detected.\n\n${Logger.statsLine()}`;
         this.item.color = '#2DD4BF'; // Teal = safe
         this.item.backgroundColor = undefined;

@@ -1,8 +1,8 @@
-# 🛡️ VibeGuard
+# 🛡️ VyberGuard
 
 **Prevent secret leakage in AI chats — fully offline, zero network calls.**
 
-VibeGuard intercepts your prompts, scans for API keys / tokens / passwords / connection strings, and replaces them with secure placeholders before the AI ever sees them. Real values are stored safely in your OS Keychain.
+VyberGuard intercepts your prompts, scans for API keys / tokens / passwords / connection strings, and replaces them with secure placeholders before the AI ever sees them. Real values are stored safely in your OS Keychain.
 
 > Built for the age of AI-assisted coding. Your secrets stay on your machine.
 
@@ -11,7 +11,7 @@ VibeGuard intercepts your prompts, scans for API keys / tokens / passwords / con
 ## ✨ Features
 
 ### 🔍 Chat Participant
-Talk to `@vibeguard` in your IDE's chat panel. Every prompt is scanned before it reaches the AI.
+Talk to `@vyberguard` in your IDE's chat panel. Every prompt is scanned before it reaches the AI.
 
 - Detects secrets and shows a security intercept with redacted output
 - `/context` command shares a redacted view of your `.env` files (keys visible, values masked)
@@ -58,7 +58,7 @@ Get warned when saving a file that still contains raw secrets.
 Persistent shield indicator showing protection state (idle / scanning / alert / safe).
 
 ### 📋 Output Log
-Full activity log in the Output panel under "VibeGuard".
+Full activity log in the Output panel under "VyberGuard".
 
 ---
 
@@ -66,13 +66,13 @@ Full activity log in the Output panel under "VibeGuard".
 
 | Setting | Default | Description |
 |---------|---------|-------------|
-| `vibeguard.enableEntropyScanning` | `true` | Enable Shannon Entropy analysis |
-| `vibeguard.entropyThreshold` | `4.5` | Minimum entropy to flag (2.0–7.0) |
-| `vibeguard.minimumTokenLength` | `20` | Minimum token length for entropy scanning |
-| `vibeguard.customPatterns` | `[]` | Custom regex patterns (`[{name, regex}]`) |
-| `vibeguard.whitelistPatterns` | `[]` | Regex patterns to exclude from detection |
-| `vibeguard.showInlineDecorations` | `true` | Show inline decorations for placeholders |
-| `vibeguard.confirmBeforeRedact` | `true` | Confirmation dialog before file redaction |
+| `vyberguard.enableEntropyScanning` | `true` | Enable Shannon Entropy analysis |
+| `vyberguard.entropyThreshold` | `4.5` | Minimum entropy to flag (2.0–7.0) |
+| `vyberguard.minimumTokenLength` | `20` | Minimum token length for entropy scanning |
+| `vyberguard.customPatterns` | `[]` | Custom regex patterns (`[{name, regex}]`) |
+| `vyberguard.whitelistPatterns` | `[]` | Regex patterns to exclude from detection |
+| `vyberguard.showInlineDecorations` | `true` | Show inline decorations for placeholders |
+| `vyberguard.confirmBeforeRedact` | `true` | Confirmation dialog before file redaction |
 
 ---
 
@@ -80,11 +80,11 @@ Full activity log in the Output panel under "VibeGuard".
 
 | Command | Description |
 |---------|-------------|
-| `VibeGuard: Redact Secrets in Active File` | Scan and redact the current file |
-| `VibeGuard: Redact Secrets in Selection` | Scan and redact selected text |
-| `VibeGuard: Restore Secrets in Active File` | Restore placeholders from keychain |
-| `VibeGuard: Scan Workspace for Secrets` | Full workspace scan with report |
-| `VibeGuard: Show VibeGuard Log` | Open the output panel |
+| `VyberGuard: Redact Secrets in Active File` | Scan and redact the current file |
+| `VyberGuard: Redact Secrets in Selection` | Scan and redact selected text |
+| `VyberGuard: Restore Secrets in Active File` | Restore placeholders from keychain |
+| `VyberGuard: Scan Workspace for Secrets` | Full workspace scan with report |
+| `VyberGuard: Show VyberGuard Log` | Open the output panel |
 
 ---
 
@@ -101,7 +101,7 @@ Full activity log in the Output panel under "VibeGuard".
 
 1. Install the extension (VSIX or Marketplace)
 2. Open any workspace
-3. Use `@vibeguard` in the chat panel, or right-click any file to scan
+3. Use `@vyberguard` in the chat panel, or right-click any file to scan
 4. Use `/context` to safely share `.env` file structure with the AI
 
 ---

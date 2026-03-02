@@ -55,7 +55,7 @@ export class SidebarProvider implements vscode.WebviewViewProvider {
     }
 
     private getHtmlForWebview(): string {
-        const config = vscode.workspace.getConfiguration('vibeguard');
+        const config = vscode.workspace.getConfiguration('vyberguard');
         const entropyEnabled = config.get<boolean>('enableEntropyScanning', true);
         const customCount = config.get<Array<unknown>>('customPatterns', []).length;
         const totalPatterns = SecretScanner.patternCount + customCount;
@@ -102,7 +102,7 @@ export class SidebarProvider implements vscode.WebviewViewProvider {
         // ─── AI Shield state ──────────────────────────────
         const shieldClass = this._aiShieldActive ? 'shield-on' : 'shield-off';
         const shieldLabel = this._aiShieldActive ? 'ON' : 'OFF';
-        const shieldCmd = this._aiShieldActive ? 'vibeguard.disableAiShield' : 'vibeguard.enableAiShield';
+        const shieldCmd = this._aiShieldActive ? 'vyberguard.disableAiShield' : 'vyberguard.enableAiShield';
         const shieldDesc = this._aiShieldActive
             ? 'AI indexers cannot read your secret files.'
             : 'AI tools may index your credentials.';
@@ -112,7 +112,7 @@ export class SidebarProvider implements vscode.WebviewViewProvider {
         <head>
             <meta charset="UTF-8">
             <meta name="viewport" content="width=device-width, initial-scale=1.0">
-            <title>VibeGuard</title>
+            <title>VyberGuard</title>
             <style>
                 :root {
                     --bg:              var(--vscode-editor-background);
@@ -482,7 +482,7 @@ export class SidebarProvider implements vscode.WebviewViewProvider {
                     <div class="brand">
                         <div class="brand-icon"></div>
                         <div>
-                            <div class="brand-name">VibeGuard</div>
+                            <div class="brand-name">VyberGuard</div>
                             <div class="brand-tag">AI Secret Shield</div>
                         </div>
                     </div>
@@ -509,11 +509,11 @@ export class SidebarProvider implements vscode.WebviewViewProvider {
 
                 <!-- ── Primary actions ─────────────────── -->
                 <div class="section">
-                    <button class="btn-cta" onclick="vscode.postMessage({type:'action', command:'vibeguard.copyRedacted'})">
+                    <button class="btn-cta" onclick="vscode.postMessage({type:'action', command:'vyberguard.copyRedacted'})">
                         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
                         Copy Redacted  <kbd style="font-family:var(--mono);font-size:10px;color:rgba(192,132,252,0.7);border:none;background:rgba(192,132,252,0.1);padding:1px 5px;border-radius:3px;">⇧C</kbd>
                     </button>
-                    <button class="btn-tool" onclick="vscode.postMessage({type:'action', command:'vibeguard.sanitizedPaste'})" style="width:100%;justify-content:center;">
+                    <button class="btn-tool" onclick="vscode.postMessage({type:'action', command:'vyberguard.sanitizedPaste'})" style="width:100%;justify-content:center;">
                         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"></path><rect x="8" y="2" width="8" height="4" rx="1" ry="1"></rect></svg>
                         <span>Sanitized Paste</span>
                         <kbd style="font-family:var(--mono);font-size:10px;color:var(--muted);background:var(--surface);padding:1px 5px;border-radius:3px;border:1px solid var(--border);margin-left:auto;">⇧V</kbd>
@@ -524,19 +524,19 @@ export class SidebarProvider implements vscode.WebviewViewProvider {
                 <div class="section">
                     <div class="section-title">Analysis</div>
                     <div class="tool-grid">
-                        <button class="btn-tool" onclick="vscode.postMessage({type:'action', command:'vibeguard.scanWorkspace'})">
+                        <button class="btn-tool" onclick="vscode.postMessage({type:'action', command:'vyberguard.scanWorkspace'})">
                             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
                             <span>Scan All</span>
                         </button>
-                        <button class="btn-tool" onclick="vscode.postMessage({type:'action', command:'vibeguard.redactActiveFile'})">
+                        <button class="btn-tool" onclick="vscode.postMessage({type:'action', command:'vyberguard.redactActiveFile'})">
                             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line></svg>
                             <span>Redact File</span>
                         </button>
-                        <button class="btn-tool" onclick="vscode.postMessage({type:'action', command:'vibeguard.restoreSecrets'})">
+                        <button class="btn-tool" onclick="vscode.postMessage({type:'action', command:'vyberguard.restoreSecrets'})">
                             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 2l-2 2m-7.61 7.61a5.5 5.5 0 1 1-7.778 7.778 5.5 5.5 0 0 1 7.777-7.777zm0 0L15.5 7.5m0 0l3 3L22 7l-3-3m-3.5 3.5L19 4"></path></svg>
                             <span>Restore</span>
                         </button>
-                        <button class="btn-tool" onclick="vscode.postMessage({type:'action', command:'vibeguard.showLog'})">
+                        <button class="btn-tool" onclick="vscode.postMessage({type:'action', command:'vyberguard.showLog'})">
                             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="4 7 4 4 20 4 20 7"></polyline><line x1="9" y1="20" x2="15" y2="20"></line><line x1="12" y1="4" x2="12" y2="20"></line></svg>
                             <span>Show Log</span>
                         </button>

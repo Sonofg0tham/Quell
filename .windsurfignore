@@ -1,0 +1,27 @@
+
+# VibeGuard AI Shield (auto-managed — do not edit this block)
+**/.env
+**/.env.*
+!**/.env.example
+!**/.env.sample
+!**/.env.template
+**/secrets.*
+**/secret.*
+**/*.pem
+**/*.key
+**/*.p12
+**/*.pfx
+**/credentials.json
+**/credentials.yml
+**/credentials.yaml
+**/serviceAccountKey.json
+**/*_rsa
+**/*_dsa
+**/*_ecdsa
+**/*_ed25519
+**/.netrc
+**/.npmrc
+**/.pypirc
+**/config/secrets*
+**/vault.*
+# End VibeGuard AI Shield

@@ -2,16 +2,16 @@ import * as vscode from 'vscode';
 
 /**
  * Centralized logging via a dedicated VS Code Output Channel.
- * Users can open "VibeGuard" in the Output panel to see scan activity.
+ * Users can open "VyberGuard" in the Output panel to see scan activity.
  */
 export class Logger {
     private static outputChannel: vscode.OutputChannel;
     private static sessionStats = { scans: 0, secretsFound: 0, redactions: 0 };
 
     public static init(): vscode.OutputChannel {
-        this.outputChannel = vscode.window.createOutputChannel('VibeGuard');
+        this.outputChannel = vscode.window.createOutputChannel('VyberGuard');
         this.outputChannel.appendLine('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
-        this.outputChannel.appendLine('  🛡️  VibeGuard — Secret Leak Prevention');
+        this.outputChannel.appendLine('  🛡️  VyberGuard — Secret Leak Prevention');
         this.outputChannel.appendLine('  Session started: ' + new Date().toLocaleString());
         this.outputChannel.appendLine('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
         this.outputChannel.appendLine('');

@@ -1,14 +1,14 @@
 {
-    "name": "vibeguard",
-    "displayName": "VibeGuard",
+    "name": "vyberguard",
+    "displayName": "VyberGuard",
     "description": "Prevent secret leakage in AI chats — intercepts prompts, redacts API keys/tokens/passwords, and stores them securely in your OS Keychain. Zero network calls, fully offline.",
     "version": "1.5.0",
-    "publisher": "vibeguard-team",
+    "publisher": "vyberguard-team",
     "icon": "assets/icon.png",
     "license": "MIT",
     "repository": {
         "type": "git",
-        "url": "https://github.com/craigmccart/VibeGuard.git"
+        "url": "https://github.com/craigmccart/VyberGuard.git"
     },
     "engines": {
         "vscode": "^1.85.0"
@@ -37,26 +37,26 @@
         "viewsContainers": {
             "activitybar": [
                 {
-                    "id": "vibeguard-sidebar",
-                    "title": "VibeGuard",
-                    "icon": "assets/vibeguard-sidebar.svg"
+                    "id": "vyberguard-sidebar",
+                    "title": "VyberGuard",
+                    "icon": "assets/vyberguard-sidebar.svg"
                 }
             ]
         },
         "views": {
-            "vibeguard-sidebar": [
+            "vyberguard-sidebar": [
                 {
-                    "id": "vibeguard.dashboard",
+                    "id": "vyberguard.dashboard",
                     "name": "Dashboard",
                     "type": "webview",
-                    "icon": "assets/vibeguard-sidebar.svg"
+                    "icon": "assets/vyberguard-sidebar.svg"
                 }
             ]
         },
         "chatParticipants": [
             {
-                "id": "vibeguard",
-                "name": "vibeguard",
+                "id": "vyberguard",
+                "name": "vyberguard",
                 "description": "I act as your AI security proxy. Talk to me, and I'll scrub your prompts before evaluating them.",
                 "isSticky": true,
                 "commands": [
@@ -69,75 +69,75 @@
         ],
         "commands": [
             {
-                "command": "vibeguard.restoreSecrets",
+                "command": "vyberguard.restoreSecrets",
                 "title": "Restore Secrets in Active File",
-                "category": "VibeGuard",
+                "category": "VyberGuard",
                 "icon": "$(key)"
             },
             {
-                "command": "vibeguard.redactActiveFile",
+                "command": "vyberguard.redactActiveFile",
                 "title": "Redact Secrets in Active File",
-                "category": "VibeGuard",
+                "category": "VyberGuard",
                 "icon": "$(shield)"
             },
             {
-                "command": "vibeguard.redactSelection",
+                "command": "vyberguard.redactSelection",
                 "title": "Redact Secrets in Selection",
-                "category": "VibeGuard",
+                "category": "VyberGuard",
                 "icon": "$(shield)"
             },
             {
-                "command": "vibeguard.scanWorkspace",
+                "command": "vyberguard.scanWorkspace",
                 "title": "Scan Workspace for Secrets",
-                "category": "VibeGuard",
+                "category": "VyberGuard",
                 "icon": "$(search)"
             },
             {
-                "command": "vibeguard.showLog",
-                "title": "Show VibeGuard Log",
-                "category": "VibeGuard",
+                "command": "vyberguard.showLog",
+                "title": "Show VyberGuard Log",
+                "category": "VyberGuard",
                 "icon": "$(output)"
             },
             {
-                "command": "vibeguard.refreshSidebar",
+                "command": "vyberguard.refreshSidebar",
                 "title": "Refresh Sidebar",
-                "category": "VibeGuard",
+                "category": "VyberGuard",
                 "icon": "$(refresh)"
             },
             {
-                "command": "vibeguard.sanitizedPaste",
+                "command": "vyberguard.sanitizedPaste",
                 "title": "Sanitized Paste (Strip Secrets)",
-                "category": "VibeGuard",
+                "category": "VyberGuard",
                 "icon": "$(clippy)"
             },
             {
-                "command": "vibeguard.copyRedacted",
+                "command": "vyberguard.copyRedacted",
                 "title": "Copy Redacted to Clipboard",
-                "category": "VibeGuard",
+                "category": "VyberGuard",
                 "icon": "$(copy)"
             },
             {
-                "command": "vibeguard.enableAiShield",
+                "command": "vyberguard.enableAiShield",
                 "title": "Enable AI Indexing Shield",
-                "category": "VibeGuard",
+                "category": "VyberGuard",
                 "icon": "$(shield)"
             },
             {
-                "command": "vibeguard.disableAiShield",
+                "command": "vyberguard.disableAiShield",
                 "title": "Disable AI Indexing Shield",
-                "category": "VibeGuard",
+                "category": "VyberGuard",
                 "icon": "$(shield)"
             }
         ],
         "keybindings": [
             {
-                "command": "vibeguard.sanitizedPaste",
+                "command": "vyberguard.sanitizedPaste",
                 "key": "ctrl+shift+v",
                 "mac": "cmd+shift+v",
                 "when": "editorTextFocus"
             },
             {
-                "command": "vibeguard.copyRedacted",
+                "command": "vyberguard.copyRedacted",
                 "key": "ctrl+shift+c",
                 "mac": "cmd+shift+c",
                 "when": "editorTextFocus"
@@ -146,57 +146,57 @@
         "menus": {
             "view/title": [
                 {
-                    "command": "vibeguard.refreshSidebar",
-                    "when": "view == vibeguard.dashboard",
+                    "command": "vyberguard.refreshSidebar",
+                    "when": "view == vyberguard.dashboard",
                     "group": "navigation"
                 },
                 {
-                    "command": "vibeguard.scanWorkspace",
-                    "when": "view == vibeguard.dashboard",
+                    "command": "vyberguard.scanWorkspace",
+                    "when": "view == vyberguard.dashboard",
                     "group": "navigation"
                 }
             ],
             "editor/context": [
                 {
-                    "command": "vibeguard.copyRedacted",
+                    "command": "vyberguard.copyRedacted",
                     "when": "editorHasSelection",
-                    "group": "vibeguard@0"
+                    "group": "vyberguard@0"
                 },
                 {
-                    "command": "vibeguard.redactSelection",
+                    "command": "vyberguard.redactSelection",
                     "when": "editorHasSelection",
-                    "group": "vibeguard@1"
+                    "group": "vyberguard@1"
                 },
                 {
-                    "command": "vibeguard.redactActiveFile",
-                    "group": "vibeguard@2"
+                    "command": "vyberguard.redactActiveFile",
+                    "group": "vyberguard@2"
                 },
                 {
-                    "command": "vibeguard.restoreSecrets",
-                    "group": "vibeguard@3"
+                    "command": "vyberguard.restoreSecrets",
+                    "group": "vyberguard@3"
                 }
             ],
             "commandPalette": [
                 {
-                    "command": "vibeguard.redactSelection",
+                    "command": "vyberguard.redactSelection",
                     "when": "editorHasSelection"
                 },
                 {
-                    "command": "vibeguard.refreshSidebar",
+                    "command": "vyberguard.refreshSidebar",
                     "when": "false"
                 }
             ]
         },
         "configuration": {
-            "title": "VibeGuard",
+            "title": "VyberGuard",
             "properties": {
-                "vibeguard.enableEntropyScanning": {
+                "vyberguard.enableEntropyScanning": {
                     "type": "boolean",
                     "default": true,
                     "description": "Enable Shannon Entropy analysis to catch high-randomness tokens that regex alone might miss.",
                     "order": 1
                 },
-                "vibeguard.entropyThreshold": {
+                "vyberguard.entropyThreshold": {
                     "type": "number",
                     "default": 4.5,
                     "minimum": 2.0,
@@ -204,7 +204,7 @@
                     "description": "Minimum Shannon Entropy to flag a token (higher = fewer false positives, lower = more aggressive). Typical API keys score 4.5–6.0.",
                     "order": 2
                 },
-                "vibeguard.minimumTokenLength": {
+                "vyberguard.minimumTokenLength": {
                     "type": "number",
                     "default": 20,
                     "minimum": 8,
@@ -212,7 +212,7 @@
                     "description": "Minimum character length for a token to be considered by entropy scanning.",
                     "order": 3
                 },
-                "vibeguard.customPatterns": {
+                "vyberguard.customPatterns": {
                     "type": "array",
                     "default": [],
                     "description": "Additional custom regex patterns for secret detection. Each entry needs a 'name' and 'regex' field.",
@@ -235,7 +235,7 @@
                     },
                     "order": 4
                 },
-                "vibeguard.whitelistPatterns": {
+                "vyberguard.whitelistPatterns": {
                     "type": "array",
                     "default": [],
                     "description": "Regex patterns for values that should NOT be flagged as secrets (e.g. known-safe test tokens).",
@@ -244,13 +244,13 @@
                     },
                     "order": 5
                 },
-                "vibeguard.showInlineDecorations": {
+                "vyberguard.showInlineDecorations": {
                     "type": "boolean",
                     "default": true,
-                    "description": "Show inline editor decorations (orange border + lock icon) for VibeGuard placeholders.",
+                    "description": "Show inline editor decorations (orange border + lock icon) for VyberGuard placeholders.",
                     "order": 6
                 },
-                "vibeguard.confirmBeforeRedact": {
+                "vyberguard.confirmBeforeRedact": {
                     "type": "boolean",
                     "default": true,
                     "description": "Show a confirmation dialog before redacting secrets in the active file.",

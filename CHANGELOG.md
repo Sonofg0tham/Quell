@@ -5,7 +5,7 @@
 ### Added
 - 75+ secret detection patterns (up from 14) covering AWS, Google, Azure, OpenAI, Anthropic, Stripe, GitHub, GitLab, Slack, Discord, JWTs, database connection strings, private keys, and more
 - Status bar indicator with live scanning/alert/safe states
-- Dedicated Output Channel logging ("VibeGuard" in Output panel)
+- Dedicated Output Channel logging ("VyberGuard" in Output panel)
 - User-configurable settings: entropy toggle, threshold, min token length, custom patterns, whitelisting, inline decorations, confirmation dialog
 - Inline editor decorations for placeholder tokens (orange borders + 🔒 icons)
 - "Redact Selection" command with context menu integration
