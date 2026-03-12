@@ -28,8 +28,8 @@ Every time you paste code into an AI chat (Copilot, Cursor, Windsurf, Antigravit
 
 ```diff
 # Before (DANGEROUS)
-- STRIPE_KEY=sk_live_51Mzxyz123abcABCDEF
-- DATABASE_URL=postgres://admin:p4ssw0rd@db.example.com:5432/mydb
+- STRIPE_KEY=sk_live_REPLACE_WITH_YOUR_KEY
+- DATABASE_URL=postgres://admin:YOUR_PASSWORD@db.example.com:5432/mydb
 
 # After Quell (SAFE)
 + STRIPE_KEY={{SECRET_52c14bbbc02e}}
