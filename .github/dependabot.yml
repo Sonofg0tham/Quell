@@ -15,7 +15,7 @@ updates:
     commit-message:
       prefix: "chore(deps)"
     reviewers:
-      - "craigmccart"
+      - "sonofg0tham"
     ignore:
       # Ignore major version bumps — these should be reviewed manually
       - dependency-name: "*"

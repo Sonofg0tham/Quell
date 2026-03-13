@@ -8,7 +8,7 @@
     "license": "MIT",
     "repository": {
         "type": "git",
-        "url": "https://github.com/craigmccart/Quell.git"
+        "url": "https://github.com/sonofg0tham/Quell.git"
     },
     "engines": {
         "vscode": "^1.85.0"

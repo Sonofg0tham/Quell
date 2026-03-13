@@ -6,7 +6,7 @@
 
 If you discover a security vulnerability in Quell, please report it responsibly via **GitHub's private vulnerability reporting**:
 
-1. Go to the [Security tab](https://github.com/craigmccart/Quell/security)
+1. Go to the [Security tab](https://github.com/sonofg0tham/Quell/security)
 2. Click **"Report a vulnerability"**
 3. Describe the issue in detail
 

@@ -123,7 +123,7 @@ Get notified when saving a file that still contains raw secrets — with a one-c
 - **100% offline** — zero network calls, zero telemetry, zero external APIs
 - **OS Keychain storage** — secrets encrypted at rest by your operating system
 - **Non-destructive** — real values always restorable from the Keychain
-- **Open source** — [audit the code yourself](https://github.com/craigmccart/Quell)
+- **Open source** — [audit the code yourself](https://github.com/sonofg0tham/Quell)
 
 ---
 
