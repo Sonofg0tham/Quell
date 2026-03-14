@@ -280,7 +280,7 @@
         "test": "tsc -p ./tsconfig.test.json && node out/test/SecretScanner.test.js"
     },
     "devDependencies": {
-        "@types/vscode": "^1.85.0",
+        "@types/vscode": "^1.110.0",
         "@types/node": "20.x",
         "typescript": "^5.3.3"
     },
