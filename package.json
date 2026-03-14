@@ -2,9 +2,13 @@
     "name": "quell",
     "displayName": "Quell",
     "description": "Prevent secret leakage in AI chats — intercepts prompts, redacts API keys/tokens/passwords, and stores them securely in your OS Keychain. Zero network calls, fully offline.",
-    "version": "2.2.0",
+    "version": "2.3.0",
     "publisher": "Sonofg0tham",
     "icon": "assets/icon.png",
+    "galleryBanner": {
+        "color": "#0d1117",
+        "theme": "dark"
+    },
     "license": "MIT",
     "repository": {
         "type": "git",
@@ -27,7 +31,11 @@
         "api-keys",
         "leak-prevention",
         "copilot",
-        "privacy"
+        "privacy",
+        "clipboard",
+        "keychain",
+        "cursor",
+        "windsurf"
     ],
     "activationEvents": [
         "onStartupFinished"

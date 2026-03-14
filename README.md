@@ -1,5 +1,8 @@
 # Quell
 
+[![VS Marketplace Version](https://img.shields.io/visual-studio-marketplace/v/Sonofg0tham.quell)](https://marketplace.visualstudio.com/items?itemName=Sonofg0tham.quell)
+[![VS Marketplace Installs](https://img.shields.io/visual-studio-marketplace/i/Sonofg0tham.quell)](https://marketplace.visualstudio.com/items?itemName=Sonofg0tham.quell)
+
 **Stop leaking secrets to AI.** Quell intercepts your prompts, scans for API keys, tokens, passwords, and connection strings — and replaces them with secure placeholders before the AI ever sees them. Real values are stored safely in your OS Keychain.
 
 > 100% offline. Zero network calls. Zero telemetry. Your secrets never leave your machine.

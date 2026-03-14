@@ -2,6 +2,19 @@
 
 All notable changes to Quell will be documented in this file.
 
+## [2.3.0] - 2026-03-14
+
+### 🛡️ Smarter Quick Fix
+- **Per-secret Quick Fix** — the `💡` lightbulb now offers "Redact this secret" to replace a single flagged secret inline, alongside the existing "Redact all secrets in file" option
+
+### 🔍 Better First-Run Experience
+- Clean workspaces now show a confirmation toast on first install instead of silence
+- Initial scan now notes if your workspace exceeded the 50-file preview limit and prompts a full scan
+
+### ⚙️ Reliability
+- Invalid custom regex patterns now log a warning in the Quell output channel instead of silently failing
+- Marketplace: added gallery banner and improved keywords for discoverability
+
 ## [2.2.0] - 2026-03-11
 
 ### ✨ Cursor & Windsurf Protection

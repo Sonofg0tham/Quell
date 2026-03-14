@@ -1,4 +1,5 @@
 import * as vscode from 'vscode';
+import * as crypto from 'crypto';
 import { SecretScanner, ScannerConfig, DEFAULT_CONFIG } from './SecretScanner';
 import { EnvManager } from './EnvManager';
 import { Logger } from './Logger';
@@ -11,13 +12,29 @@ import { DiagnosticProvider } from './DiagnosticProvider';
 // ─────────────────────────────────────────────────────
 //  Helper: Read VS Code settings into ScannerConfig
 // ─────────────────────────────────────────────────────
+const _warnedPatterns = new Set<string>();
+
 function getConfig(): ScannerConfig {
     const cfg = vscode.workspace.getConfiguration('quell');
+    const rawPatterns = cfg.get<Array<{ name: string; regex: string }>>('customPatterns', DEFAULT_CONFIG.customPatterns);
+    const customPatterns: Array<{ name: string; regex: string }> = [];
+    for (const p of rawPatterns) {
+        try {
+            new RegExp(p.regex);
+            customPatterns.push(p);
+        } catch (e) {
+            const key = `${p.name}::${p.regex}`;
+            if (!_warnedPatterns.has(key)) {
+                _warnedPatterns.add(key);
+                Logger.warn(`Custom pattern "${p.name}" has an invalid regex and will be skipped: ${e instanceof Error ? e.message : String(e)}`);
+            }
+        }
+    }
     return {
         enableEntropy: cfg.get<boolean>('enableEntropyScanning', DEFAULT_CONFIG.enableEntropy),
         entropyThreshold: cfg.get<number>('entropyThreshold', DEFAULT_CONFIG.entropyThreshold),
         minimumTokenLength: cfg.get<number>('minimumTokenLength', DEFAULT_CONFIG.minimumTokenLength),
-        customPatterns: cfg.get<Array<{ name: string; regex: string }>>('customPatterns', DEFAULT_CONFIG.customPatterns),
+        customPatterns,
         whitelistPatterns: cfg.get<string[]>('whitelistPatterns', DEFAULT_CONFIG.whitelistPatterns),
     };
 }
@@ -71,6 +88,7 @@ export function activate(context: vscode.ExtensionContext) {
                 '{**/node_modules/**,**/.git/**,**/dist/**,**/out/**}'
             );
             const config = getConfig();
+            const totalFiles = files.length;
             let totalSecrets = 0;
             let fileCount = 0;
             for (const uri of files.slice(0, 50)) {
@@ -80,16 +98,20 @@ export function activate(context: vscode.ExtensionContext) {
                     if (secrets.size > 0) { totalSecrets += secrets.size; fileCount++; }
                 } catch { /* skip */ }
             }
+            const capNote = totalFiles > 50 ? ` (scanned 50 of ${totalFiles} files — run 'Scan Workspace' for a full audit)` : '';
             if (totalSecrets > 0) {
                 Logger.warn(`VIBE CHECK: Found ${totalSecrets} potential secret(s) across ${fileCount} file(s).`);
                 vscode.window.showWarningMessage(
-                    `🛡️ Quell Vibe Check: Found ${totalSecrets} exposed secret(s) in ${fileCount} file(s). Enable AI Shield to protect them.`,
+                    `🛡️ Quell: Found ${totalSecrets} exposed secret(s) in ${fileCount} file(s).${capNote}`,
                     'Enable AI Shield', 'Scan Details'
                 ).then(choice => {
                     if (choice === 'Enable AI Shield') { vscode.commands.executeCommand('quell.enableAiShield'); }
                     if (choice === 'Scan Details') { vscode.commands.executeCommand('quell.scanWorkspace'); }
                 });
                 StatusBar.setExposureBadge(totalSecrets);
+            } else {
+                Logger.info('VIBE CHECK: Workspace is clean.');
+                vscode.window.showInformationMessage(`✅ Quell: Initial scan complete — no exposed secrets found.${capNote}`);
             }
         }, 3000);
     }
@@ -722,7 +744,45 @@ export function activate(context: vscode.ExtensionContext) {
     });
 
     // ─────────────────────────────────────────
-    // 18. Command: Toggle Auto-Sanitize
+    // 18. Command: Redact Single Secret (Quick Fix)
+    //     Called by DiagnosticProvider code action
+    //     to redact one specific secret by range.
+    // ─────────────────────────────────────────
+    const redactSingleSecretCmd = vscode.commands.registerCommand(
+        'quell.redactSingleSecret',
+        async (uriString: string, startLine: number, startChar: number, endLine: number, endChar: number, secretValue: string) => {
+            const uri = vscode.Uri.parse(uriString);
+            const range = new vscode.Range(
+                new vscode.Position(startLine, startChar),
+                new vscode.Position(endLine, endChar)
+            );
+
+            // Verify the secret is still at that range before replacing
+            const doc = await vscode.workspace.openTextDocument(uri);
+            if (doc.getText(range) !== secretValue) { return; }
+
+            const uuid = crypto.randomUUID().replace(/-/g, '').substring(0, 12);
+            const placeholder = `{{SECRET_${uuid}}}`;
+            await context.secrets.store(placeholder, secretValue);
+
+            const edit = new vscode.WorkspaceEdit();
+            edit.replace(uri, range, placeholder);
+            await vscode.workspace.applyEdit(edit);
+
+            Logger.info(`Redacted single secret [Quick Fix] → ${placeholder}`);
+            StatusBar.setAlert(1);
+            setTimeout(() => StatusBar.setSafe(), 4000);
+
+            const activeEditor = vscode.window.activeTextEditor;
+            if (activeEditor && activeEditor.document.uri.toString() === uriString) {
+                DecorationProvider.updateDecorations(activeEditor);
+            }
+            sidebarProvider.recordScan(1);
+        }
+    );
+
+    // ─────────────────────────────────────────
+    // 19. Command: Toggle Auto-Sanitize
     // ─────────────────────────────────────────
     const toggleAutoSanitizeCmd = vscode.commands.registerCommand('quell.toggleAutoSanitize', async () => {
         const config = vscode.workspace.getConfiguration('quell');
@@ -751,7 +811,8 @@ export function activate(context: vscode.ExtensionContext) {
         hoverProvider,
         saveWatcher,
         openFileCmd,
-        toggleAutoSanitizeCmd
+        toggleAutoSanitizeCmd,
+        redactSingleSecretCmd
     );
 
 

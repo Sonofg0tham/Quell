@@ -5,6 +5,8 @@ export class DiagnosticProvider implements vscode.CodeActionProvider {
     private static collection: vscode.DiagnosticCollection;
     private static disposables: vscode.Disposable[] = [];
     private static timeout: NodeJS.Timeout | undefined;
+    // Maps "uriString:startLine:startChar" → secret value for per-secret Quick Fix
+    private static secretRangeMap = new Map<string, string>();
 
     public static readonly providedCodeActionKinds = [
         vscode.CodeActionKind.QuickFix
@@ -54,9 +56,15 @@ export class DiagnosticProvider implements vscode.CodeActionProvider {
             whitelistPatterns: config.get<string[]>('whitelistPatterns', DEFAULT_CONFIG.whitelistPatterns),
         };
 
+        const uriString = document.uri.toString();
         const text = document.getText();
         const diagnostics: vscode.Diagnostic[] = [];
-        
+
+        // Clear previous range→secret mappings for this document
+        for (const key of [...this.secretRangeMap.keys()]) {
+            if (key.startsWith(uriString + ':')) { this.secretRangeMap.delete(key); }
+        }
+
         // Find secrets using standard redaction engine
         const { secrets, detectedTypes } = SecretScanner.redact(text, scannerConfig);
 
@@ -76,7 +84,7 @@ export class DiagnosticProvider implements vscode.CodeActionProvider {
                 const startPos = document.positionAt(index);
                 const endPos = document.positionAt(index + secretValue.length);
                 const range = new vscode.Range(startPos, endPos);
-                
+
                 const diagnostic = new vscode.Diagnostic(
                     range,
                     `🚨 Exposed Secret [${typeHint}]: Run "Quell: Redact Active File" before sharing.`,
@@ -85,7 +93,11 @@ export class DiagnosticProvider implements vscode.CodeActionProvider {
                 diagnostic.source = 'Quell';
                 diagnostic.code = 'exposed-secret';
                 diagnostics.push(diagnostic);
-                
+
+                // Store secret value keyed by range position for Quick Fix lookup
+                const rangeKey = `${uriString}:${startPos.line}:${startPos.character}`;
+                this.secretRangeMap.set(rangeKey, secretValue);
+
                 startIndex = index + secretValue.length;
             }
         }
@@ -97,20 +109,49 @@ export class DiagnosticProvider implements vscode.CodeActionProvider {
         const diagnostics = context.diagnostics.filter(d => d.source === 'Quell');
         if (diagnostics.length === 0) { return []; }
 
-        const fix = new vscode.CodeAction('🛡️ Quell: Redact Secret(s)', vscode.CodeActionKind.QuickFix);
-        fix.command = {
+        const actions: vscode.CodeAction[] = [];
+        const uriString = document.uri.toString();
+
+        // Per-secret actions for each flagged range
+        for (const diagnostic of diagnostics) {
+            const r = diagnostic.range;
+            const rangeKey = `${uriString}:${r.start.line}:${r.start.character}`;
+            const secretValue = DiagnosticProvider.secretRangeMap.get(rangeKey);
+            if (secretValue) {
+                const perSecretFix = new vscode.CodeAction('🛡️ Quell: Redact this secret', vscode.CodeActionKind.QuickFix);
+                perSecretFix.command = {
+                    command: 'quell.redactSingleSecret',
+                    title: 'Redact this secret',
+                    arguments: [
+                        uriString,
+                        r.start.line, r.start.character,
+                        r.end.line, r.end.character,
+                        secretValue
+                    ]
+                };
+                perSecretFix.diagnostics = [diagnostic];
+                perSecretFix.isPreferred = diagnostics.length === 1;
+                actions.push(perSecretFix);
+            }
+        }
+
+        // Whole-file fallback
+        const fileFix = new vscode.CodeAction('🛡️ Quell: Redact all secrets in file', vscode.CodeActionKind.QuickFix);
+        fileFix.command = {
             command: 'quell.redactActiveFile',
-            title: 'Redact Secret(s)',
+            title: 'Redact all secrets in file',
             tooltip: 'Replace all exposed secrets with secure placeholders'
         };
-        fix.diagnostics = diagnostics;
-        fix.isPreferred = true;
+        fileFix.diagnostics = diagnostics;
+        fileFix.isPreferred = actions.length === 0;
+        actions.push(fileFix);
 
-        return [fix];
+        return actions;
     }
 
     public static dispose(): void {
         this.collection?.dispose();
         this.disposables.forEach(d => d.dispose());
+        this.secretRangeMap.clear();
     }
 }
