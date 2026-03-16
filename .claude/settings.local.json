@@ -7,7 +7,8 @@
       "WebSearch",
       "WebFetch(domain:docs.github.com)",
       "WebFetch(domain:docs.gitguardian.com)",
-      "WebFetch(domain:gist.github.com)"
+      "WebFetch(domain:gist.github.com)",
+      "Bash(cd:*)"
     ]
   }
 }
