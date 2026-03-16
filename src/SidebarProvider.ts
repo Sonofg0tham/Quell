@@ -70,11 +70,19 @@ export class SidebarProvider implements vscode.WebviewViewProvider {
         // ─── Findings section ─────────────────────────────
         let findingsHtml = '';
         if (this.scanResults.length > 0) {
-            const items = this.scanResults.slice(0, 8).map(f => `
-                <div class="finding-item" onclick="vscode.postMessage({type:'action', command:'quell.openFile', args:['${f.file.replace(/\\/g, '\\\\').replace(/'/g, "\\'")}']})">
+            const items = this.scanResults.slice(0, 8).map(f => {
+                const escapedFile = f.file.replace(/\\/g, '\\\\').replace(/'/g, "\\'");
+                return `
+                <div class="finding-item"
+                    role="button"
+                    tabindex="0"
+                    onclick="vscode.postMessage({type:'action', command:'quell.openFile', args:['${escapedFile}']})"
+                    onkeydown="if(event.key === 'Enter' || event.key === ' ') { event.preventDefault(); vscode.postMessage({type:'action', command:'quell.openFile', args:['${escapedFile}']}); }"
+                >
                     <span class="finding-file" title="${f.file}">${f.file}</span>
                     <span class="finding-count" title="${f.count} secret(s)">${f.count}</span>
-                </div>`).join('');
+                </div>`;
+            }).join('');
             const moreTag = this.scanResults.length > 8
                 ? `<div class="finding-more">+${this.scanResults.length - 8} more files</div>` : '';
             findingsHtml = `
@@ -415,6 +423,7 @@ export class SidebarProvider implements vscode.WebviewViewProvider {
                     transform: translateY(-1px);
                 }
                 .btn-cta:active { transform: translateY(0) scale(0.99); }
+                .btn-cta:focus-visible { outline: 2px solid var(--accent-bright); outline-offset: 2px; }
                 .btn-cta svg { width: 14px; height: 14px; }
 
                 /* ── Tool grid ──────────────────────── */
@@ -451,6 +460,7 @@ export class SidebarProvider implements vscode.WebviewViewProvider {
                 .btn-tool:active { transform: translateY(0) scale(0.97); }
                 .btn-tool svg { width: 14px; height: 14px; flex-shrink: 0; color: var(--accent); transition: all 0.2s; }
                 .btn-tool:hover svg { transform: rotate(-5deg) scale(1.1); filter: drop-shadow(0 0 4px var(--accent)); }
+                .btn-tool:focus-visible { outline: 2px solid var(--accent-bright); outline-offset: 2px; }
                 .btn-tool span { overflow: hidden; text-overflow: ellipsis; }
 
                 /* ── Stats row ──────────────────────── */
@@ -566,6 +576,11 @@ export class SidebarProvider implements vscode.WebviewViewProvider {
                 }
                 .finding-item:active {
                     transform: scale(0.99);
+                }
+                .finding-item:focus-visible {
+                    outline: 2px solid var(--accent-bright);
+                    outline-offset: -2px;
+                    background: rgba(251,113,133,0.08);
                 }
                 .finding-item:last-child { border-bottom: none; }
                 .finding-file {
