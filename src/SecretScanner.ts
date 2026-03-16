@@ -91,7 +91,7 @@ export class SecretScanner {
         // ── Email Services ───────────────────
         { name: 'SendGrid API Key', regex: /SG\.[a-zA-Z0-9\-_]{22}\.[a-zA-Z0-9\-_]{43}/ },
         { name: 'Mailgun API Key', regex: /key-[0-9a-zA-Z]{32}/ },
-        { name: 'Mailchimp API Key', regex: /\b[0-9a-f]{32}-us\d{1,2}/ },
+        { name: 'Mailchimp API Key', regex: /[0-9a-f]{32}-us\d{1,2}/ },
 
         // ── Hosting & Deployment ─────────────
         { name: 'Heroku API Key', regex: /[hH]eroku.*[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}/ },
@@ -133,7 +133,7 @@ export class SecretScanner {
 
         // ── Infrastructure / DevOps ──────────
         { name: 'Hashicorp Vault Token', regex: /hvs\.[a-zA-Z0-9\-_]{24,}/ },
-        { name: 'Terraform Cloud Token', regex: /\b[a-zA-Z0-9]{14}\.atlasv1\.[a-zA-Z0-9\-_]{60,}/ },
+        { name: 'Terraform Cloud Token', regex: /[a-zA-Z0-9]{14}\.atlasv1\.[a-zA-Z0-9\-_]{60,}/ },
         { name: 'Doppler Token', regex: /dp\.st\.[a-zA-Z0-9\-_]{40,}/ },
 
         // ── E-commerce ───────────────────────
@@ -158,12 +158,6 @@ export class SecretScanner {
         { name: 'Password in Assignment', regex: /(?:password|passwd|pwd)\s*[=:]\s*['"][^'"\n\r]{8,64}['"]/i },
         { name: 'Token in Assignment', regex: /(?:token|api_key|apikey|access_key|auth_token|secret_key)\s*[=:]\s*['"][^'"\n\r]{16,100}['"]/i },
     ];
-
-    private static readonly GLOBAL_PATTERNS: Array<{ name: string; regex: RegExp }> =
-        SecretScanner.PATTERNS.map(p => ({
-            name: p.name,
-            regex: new RegExp(p.regex, 'g')
-        }));
 
 
     // ═════════════════════════════════════════
@@ -215,8 +209,9 @@ export class SecretScanner {
         };
 
         // ── Step 1: Built-in Regex Patterns ──
-        for (const pattern of this.GLOBAL_PATTERNS) {
-            const matches = text.match(pattern.regex);
+        for (const pattern of this.PATTERNS) {
+            const globalRegex = new RegExp(pattern.regex, 'g');
+            const matches = text.match(globalRegex);
             if (matches) {
                 const uniqueMatches = [...new Set(matches)];
                 uniqueMatches.forEach((match) => replaceSecret(match, pattern.name));
@@ -280,7 +275,7 @@ export class SecretScanner {
                 if (/^[A-Z][A-Z0-9]*(_[A-Z0-9]+)+$/.test(token)) { continue; }
 
                 // Skip camelCase / PascalCase identifiers that are purely alpha (e.g. handlePasswordChange, scoreError)
-                if (/^[a-zA-Z_$][a-zA-Z_$]*$/.test(token) && /[a-z]/.test(token) && /[A-Z]/.test(token)) { continue; }
+                if (/^[a-zA-Z_$][a-zA-Z0-9_$]*$/.test(token) && /[a-z]/.test(token) && /[A-Z]/.test(token)) { continue; }
 
                 // Skip environment variable references (import.meta.env.*, process.env.*)
                 if (/^(import\.meta\.env|process\.env)\./i.test(token)) { continue; }
@@ -337,32 +332,6 @@ export class SecretScanner {
         const len = str.length;
         if (len === 0) { return 0; }
 
-        const frequencies = new Int32Array(256);
-        let i = 0;
-        for (; i < len; i++) {
-            const charCode = str.charCodeAt(i);
-            if (charCode < 256) {
-                frequencies[charCode]++;
-            } else {
-                // Fallback for non-ASCII characters
-                return this._calculateEntropySlow(str);
-            }
-        }
-
-        let entropy = 0;
-        for (i = 0; i < 256; i++) {
-            const count = frequencies[i];
-            if (count > 0) {
-                const p = count / len;
-                entropy -= p * Math.log2(p);
-            }
-        }
-
-        return entropy;
-    }
-
-    private static _calculateEntropySlow(str: string): number {
-        const len = str.length;
         const frequencies = new Map<string, number>();
         for (let i = 0; i < len; i++) {
             const char = str[i];

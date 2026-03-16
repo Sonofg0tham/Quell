@@ -149,7 +149,7 @@ test('detects GitHub PAT (ghp_)', () => {
 
 test('detects GitHub Fine-grained PAT', () => {
     // May be caught by regex or entropy — both are valid detections
-    assertAnySecretDetected('github_pat_1234567890abcdefghijkl_abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ1234567');
+    assertAnySecretDetected('github_pat_1234567890abcdefghijkl_abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ12345');
 });
 
 test('detects GitLab PAT', () => {
