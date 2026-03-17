@@ -1,6 +1,15 @@
 import * as vscode from 'vscode';
 import { SecretScanner } from './SecretScanner';
 
+function escapeHtml(unsafe: string): string {
+    return unsafe
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;")
+        .replace(/'/g, "&#039;");
+}
+
 export class SidebarProvider implements vscode.WebviewViewProvider {
     private _view?: vscode.WebviewView;
     private sessionScans = 0;
@@ -72,14 +81,16 @@ export class SidebarProvider implements vscode.WebviewViewProvider {
         if (this.scanResults.length > 0) {
             const items = this.scanResults.slice(0, 8).map(f => {
                 const escapedFile = f.file.replace(/\\/g, '\\\\').replace(/'/g, "\\'");
+                const htmlSafeEscapedFile = escapeHtml(escapedFile);
+                const htmlSafeFile = escapeHtml(f.file);
                 return `
                 <div class="finding-item"
                     role="button"
                     tabindex="0"
-                    onclick="vscode.postMessage({type:'action', command:'quell.openFile', args:['${escapedFile}']})"
-                    onkeydown="if(event.key === 'Enter' || event.key === ' ') { event.preventDefault(); vscode.postMessage({type:'action', command:'quell.openFile', args:['${escapedFile}']}); }"
+                    onclick="vscode.postMessage({type:'action', command:'quell.openFile', args:['${htmlSafeEscapedFile}']})"
+                    onkeydown="if(event.key === 'Enter' || event.key === ' ') { event.preventDefault(); vscode.postMessage({type:'action', command:'quell.openFile', args:['${htmlSafeEscapedFile}']}); }"
                 >
-                    <span class="finding-file" title="${f.file}">${f.file}</span>
+                    <span class="finding-file" title="${htmlSafeFile}">${htmlSafeFile}</span>
                     <span class="finding-count" title="${f.count} secret(s)">${f.count}</span>
                 </div>`;
             }).join('');
