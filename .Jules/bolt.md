@@ -1,0 +1,3 @@
+## 2024-05-24 - Zero-Allocation Entropy Calculation
+**Learning:** Instantiating `new Int32Array(256)` inside a tight, high-frequency loop like string character counting adds significant overhead, even though TypedArrays are faster than normal Arrays/Objects. Furthermore, `.fill(0)` or iterating over the full 256 array size is sub-optimal when most strings only utilize a small subset of characters.
+**Action:** Share a static, pre-allocated `Int32Array` instance for calculations, track which indices are touched, and only zero out those specific indices when done. This reduces memory allocation and minimizes loop iterations.
