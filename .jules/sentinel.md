@@ -1,0 +1,4 @@
+## 2024-05-18 - XSS in Webview UI
+**Vulnerability:** User-controlled file paths (`scanResults`) were directly interpolated into VS Code Webview HTML without escaping, creating an XSS vulnerability if a malicious file name was indexed.
+**Learning:** Webviews with `'unsafe-inline'` script Content-Security-Policy rules are vulnerable to DOM/HTML injection. Even seemingly benign data like file paths can be crafted maliciously (e.g., `"><script>alert(1)</script>`) to execute arbitrary Javascript within the webview context.
+**Prevention:** Always rigorously HTML-escape dynamic content using an escaping function before injecting it into Webview HTML template literals. Use `.replace(/[&<>"']/g, ...)` to ensure characters like `&`, `<`, `>`, `"`, and `'` are safely transformed into their corresponding HTML entities.

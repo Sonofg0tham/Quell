@@ -67,19 +67,30 @@ export class SidebarProvider implements vscode.WebviewViewProvider {
         const customCount = config.get<Array<unknown>>('customPatterns', []).length;
         const totalPatterns = SecretScanner.patternCount + customCount;
 
+        const escapeHtml = (unsafe: string): string => {
+            return unsafe
+                .replace(/&/g, "&amp;")
+                .replace(/</g, "&lt;")
+                .replace(/>/g, "&gt;")
+                .replace(/"/g, "&quot;")
+                .replace(/'/g, "&#039;");
+        };
+
         // ─── Findings section ─────────────────────────────
         let findingsHtml = '';
         if (this.scanResults.length > 0) {
             const items = this.scanResults.slice(0, 8).map(f => {
-                const escapedFile = f.file.replace(/\\/g, '\\\\').replace(/'/g, "\\'");
+                const escapedFileJs = f.file.replace(/\\/g, '\\\\').replace(/'/g, "\\'");
+                const safeFileJs = escapeHtml(escapedFileJs);
+                const safeFile = escapeHtml(f.file);
                 return `
                 <div class="finding-item"
                     role="button"
                     tabindex="0"
-                    onclick="vscode.postMessage({type:'action', command:'quell.openFile', args:['${escapedFile}']})"
-                    onkeydown="if(event.key === 'Enter' || event.key === ' ') { event.preventDefault(); vscode.postMessage({type:'action', command:'quell.openFile', args:['${escapedFile}']}); }"
+                    onclick="vscode.postMessage({type:'action', command:'quell.openFile', args:['${safeFileJs}']})"
+                    onkeydown="if(event.key === 'Enter' || event.key === ' ') { event.preventDefault(); vscode.postMessage({type:'action', command:'quell.openFile', args:['${safeFileJs}']}); }"
                 >
-                    <span class="finding-file" title="${f.file}">${f.file}</span>
+                    <span class="finding-file" title="${safeFile}">${safeFile}</span>
                     <span class="finding-count" title="${f.count} secret(s)">${f.count}</span>
                 </div>`;
             }).join('');
