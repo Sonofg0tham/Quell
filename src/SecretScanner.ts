@@ -330,6 +330,12 @@ export class SecretScanner {
     //  Entropy Calculation
     // ═══════════════════════════════════
 
+    // Pre-allocated static arrays for high-frequency ASCII entropy calculation.
+    // Significantly reduces garbage collection overhead and allocation time
+    // compared to creating a new Int32Array(256) per token.
+    private static readonly _sharedFrequencies = new Int32Array(256);
+    private static readonly _modifiedIndices = new Int32Array(256);
+
     /**
      * Calculates Shannon entropy of a string.
      * Higher entropy → more random → more likely to be a secret.
@@ -339,24 +345,38 @@ export class SecretScanner {
         const len = str.length;
         if (len === 0) { return 0; }
 
-        // Fast path: use a fixed Int32Array for ASCII character frequencies (~40% faster than Map).
-        const frequencies = new Int32Array(256);
+        // Fast path: use a shared, pre-allocated Int32Array for ASCII character frequencies.
+        // We also track exactly which indices were modified to avoid iterating over all 256 elements
+        // during calculation and reset.
+        const frequencies = SecretScanner._sharedFrequencies;
+        const modified = SecretScanner._modifiedIndices;
+        let modCount = 0;
+
         for (let i = 0; i < len; i++) {
             const code = str.charCodeAt(i);
             if (code > 255) {
-                // Non-ASCII character — fall back to the Map-based implementation.
+                // Non-ASCII character — we must clean up any frequencies we've already tracked
+                // before falling back, so the shared array is clean for the next caller.
+                for (let j = 0; j < modCount; j++) {
+                    frequencies[modified[j]] = 0;
+                }
                 return SecretScanner._calculateEntropyFallback(str);
+            }
+            if (frequencies[code] === 0) {
+                modified[modCount++] = code;
             }
             frequencies[code]++;
         }
 
         let entropy = 0;
-        for (let i = 0; i < 256; i++) {
-            const count = frequencies[i];
-            if (count > 0) {
-                const p = count / len;
-                entropy -= p * Math.log2(p);
-            }
+        for (let i = 0; i < modCount; i++) {
+            const code = modified[i];
+            const count = frequencies[code];
+            const p = count / len;
+            entropy -= p * Math.log2(p);
+
+            // Lazily reset the modified index back to 0 for the next calculation
+            frequencies[code] = 0;
         }
 
         return entropy;
