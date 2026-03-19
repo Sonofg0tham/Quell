@@ -335,16 +335,26 @@ export class SecretScanner {
      * Higher entropy → more random → more likely to be a secret.
      * Typical prose: 2-3 bits. API keys: 4.5-6 bits.
      */
+    // Pre-allocated static array to avoid allocation overhead on every call.
+    // Memory is kept and reused, clearing only the indices that were modified.
+    private static readonly _sharedFrequencies = new Int32Array(256);
+
     public static calculateEntropy(str: string): number {
         const len = str.length;
         if (len === 0) { return 0; }
 
-        // Fast path: use a fixed Int32Array for ASCII character frequencies (~40% faster than Map).
-        const frequencies = new Int32Array(256);
+        // Fast path: use a pre-allocated Int32Array for ASCII character frequencies.
+        // This is significantly faster than allocating a new array or Map on every call.
+        const frequencies = SecretScanner._sharedFrequencies;
         for (let i = 0; i < len; i++) {
             const code = str.charCodeAt(i);
             if (code > 255) {
                 // Non-ASCII character — fall back to the Map-based implementation.
+                // But first, lazily clear any frequencies we've already counted to maintain state.
+                for (let j = 0; j < i; j++) {
+                    const c = str.charCodeAt(j);
+                    if (c <= 255) frequencies[c] = 0;
+                }
                 return SecretScanner._calculateEntropyFallback(str);
             }
             frequencies[code]++;
@@ -356,6 +366,8 @@ export class SecretScanner {
             if (count > 0) {
                 const p = count / len;
                 entropy -= p * Math.log2(p);
+                // Lazily reset the array back to 0s for the next calculation
+                frequencies[i] = 0;
             }
         }
 
