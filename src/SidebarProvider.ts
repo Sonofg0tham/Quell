@@ -71,15 +71,36 @@ export class SidebarProvider implements vscode.WebviewViewProvider {
         let findingsHtml = '';
         if (this.scanResults.length > 0) {
             const items = this.scanResults.slice(0, 8).map(f => {
-                const escapedFile = f.file.replace(/\\/g, '\\\\').replace(/'/g, "\\'");
+                // Properly escape for JS strings AND HTML attributes
+                // 1. JS Escape: Escape backslashes, single quotes, double quotes, newlines, etc.
+                const jsEscapedFile = f.file
+                    .replace(/\\/g, '\\\\')
+                    .replace(/'/g, "\\'")
+                    .replace(/"/g, '\\"')
+                    .replace(/\n/g, '\\n')
+                    .replace(/\r/g, '\\r');
+                // 2. HTML Escape: Escape for attribute context so it doesn't break out of quotes
+                const htmlEscapedJsFile = jsEscapedFile
+                    .replace(/&/g, '&amp;')
+                    .replace(/</g, '&lt;')
+                    .replace(/>/g, '&gt;')
+                    .replace(/"/g, '&quot;');
+
+                // Pure HTML escape for display
+                const htmlEscapedFile = f.file
+                    .replace(/&/g, '&amp;')
+                    .replace(/</g, '&lt;')
+                    .replace(/>/g, '&gt;')
+                    .replace(/"/g, '&quot;');
+
                 return `
                 <div class="finding-item"
                     role="button"
                     tabindex="0"
-                    onclick="vscode.postMessage({type:'action', command:'quell.openFile', args:['${escapedFile}']})"
-                    onkeydown="if(event.key === 'Enter' || event.key === ' ') { event.preventDefault(); vscode.postMessage({type:'action', command:'quell.openFile', args:['${escapedFile}']}); }"
+                    onclick="vscode.postMessage({type:'action', command:'quell.openFile', args:['${htmlEscapedJsFile}']})"
+                    onkeydown="if(event.key === 'Enter' || event.key === ' ') { event.preventDefault(); vscode.postMessage({type:'action', command:'quell.openFile', args:['${htmlEscapedJsFile}']}); }"
                 >
-                    <span class="finding-file" title="${f.file}">${f.file}</span>
+                    <span class="finding-file" title="${htmlEscapedFile}">${htmlEscapedFile}</span>
                     <span class="finding-count" title="${f.count} secret(s)">${f.count}</span>
                 </div>`;
             }).join('');
