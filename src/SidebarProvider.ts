@@ -67,19 +67,35 @@ export class SidebarProvider implements vscode.WebviewViewProvider {
         const customCount = config.get<Array<unknown>>('customPatterns', []).length;
         const totalPatterns = SecretScanner.patternCount + customCount;
 
+        // ─── Security ──────────────────────────────────────
+        const escapeHtml = (unsafe: string) => {
+            return unsafe
+                 .replace(/&/g, "&amp;")
+                 .replace(/</g, "&lt;")
+                 .replace(/>/g, "&gt;")
+                 .replace(/"/g, "&quot;")
+                 .replace(/'/g, "&#039;");
+        };
+
         // ─── Findings section ─────────────────────────────
         let findingsHtml = '';
         if (this.scanResults.length > 0) {
             const items = this.scanResults.slice(0, 8).map(f => {
-                const escapedFile = f.file.replace(/\\/g, '\\\\').replace(/'/g, "\\'");
+                // For JS injection (args:['...']): JS-escape THEN HTML-escape.
+                const jsEscapedFile = f.file.replace(/\\/g, '\\\\').replace(/'/g, "\\'");
+                const finalEscapedJsArg = escapeHtml(jsEscapedFile);
+
+                // For direct HTML injection (title, body): HTML-escape.
+                const htmlEscapedFile = escapeHtml(f.file);
+
                 return `
                 <div class="finding-item"
                     role="button"
                     tabindex="0"
-                    onclick="vscode.postMessage({type:'action', command:'quell.openFile', args:['${escapedFile}']})"
-                    onkeydown="if(event.key === 'Enter' || event.key === ' ') { event.preventDefault(); vscode.postMessage({type:'action', command:'quell.openFile', args:['${escapedFile}']}); }"
+                    onclick="vscode.postMessage({type:'action', command:'quell.openFile', args:['${finalEscapedJsArg}']})"
+                    onkeydown="if(event.key === 'Enter' || event.key === ' ') { event.preventDefault(); vscode.postMessage({type:'action', command:'quell.openFile', args:['${finalEscapedJsArg}']}); }"
                 >
-                    <span class="finding-file" title="${f.file}">${f.file}</span>
+                    <span class="finding-file" title="${htmlEscapedFile}">${htmlEscapedFile}</span>
                     <span class="finding-count" title="${f.count} secret(s)">${f.count}</span>
                 </div>`;
             }).join('');
