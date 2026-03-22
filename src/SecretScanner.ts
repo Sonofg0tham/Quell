@@ -330,6 +330,10 @@ export class SecretScanner {
     //  Entropy Calculation
     // ═══════════════════════════════════
 
+    // Pre-allocated array to avoid creating Int32Array(256) on every calculateEntropy call
+    // This provides a massive performance boost for high-frequency token scanning
+    private static readonly _frequencyCache = new Int32Array(256);
+
     /**
      * Calculates Shannon entropy of a string.
      * Higher entropy → more random → more likely to be a secret.
@@ -340,22 +344,29 @@ export class SecretScanner {
         if (len === 0) { return 0; }
 
         // Fast path: use a fixed Int32Array for ASCII character frequencies (~40% faster than Map).
-        const frequencies = new Int32Array(256);
+        const frequencies = SecretScanner._frequencyCache;
         for (let i = 0; i < len; i++) {
             const code = str.charCodeAt(i);
             if (code > 255) {
                 // Non-ASCII character — fall back to the Map-based implementation.
+                // Reset modified frequencies before returning
+                for (let j = 0; j < i; j++) {
+                    frequencies[str.charCodeAt(j)] = 0;
+                }
                 return SecretScanner._calculateEntropyFallback(str);
             }
             frequencies[code]++;
         }
 
         let entropy = 0;
-        for (let i = 0; i < 256; i++) {
-            const count = frequencies[i];
+        for (let i = 0; i < len; i++) {
+            const code = str.charCodeAt(i);
+            const count = frequencies[code];
             if (count > 0) {
                 const p = count / len;
                 entropy -= p * Math.log2(p);
+                // Lazily zero out only the modified indices to avoid reallocation
+                frequencies[code] = 0;
             }
         }
 

@@ -1,0 +1,3 @@
+## 2024-03-22 - Pre-allocated Shared Arrays for High-Frequency Token Scanning
+**Learning:** For high-frequency string processing or calculations in TypeScript (like calculateEntropy), repeatedly allocating and zeroing new Int32Arrays creates unnecessary garbage collection overhead and memory churn.
+**Action:** Use a pre-allocated, shared static Int32Array and lazily reset only the modified indices to achieve significant performance gains over repeatedly allocating and zeroing new arrays.
