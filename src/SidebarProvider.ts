@@ -67,19 +67,32 @@ export class SidebarProvider implements vscode.WebviewViewProvider {
         const customCount = config.get<Array<unknown>>('customPatterns', []).length;
         const totalPatterns = SecretScanner.patternCount + customCount;
 
+        // Helper to safely escape HTML to prevent XSS in Webview
+        const escapeHtml = (unsafe: string) => {
+            return unsafe
+                .replace(/&/g, "&amp;")
+                .replace(/</g, "&lt;")
+                .replace(/>/g, "&gt;")
+                .replace(/"/g, "&quot;")
+                .replace(/'/g, "&#039;");
+        };
+
         // ─── Findings section ─────────────────────────────
         let findingsHtml = '';
         if (this.scanResults.length > 0) {
             const items = this.scanResults.slice(0, 8).map(f => {
-                const escapedFile = f.file.replace(/\\/g, '\\\\').replace(/'/g, "\\'");
+                const safeFileForUI = escapeHtml(f.file);
+                // Serialize as JSON to safely embed in JS string literal, then escape for HTML attribute
+                const safeArgs = escapeHtml(JSON.stringify([f.file]));
+
                 return `
                 <div class="finding-item"
                     role="button"
                     tabindex="0"
-                    onclick="vscode.postMessage({type:'action', command:'quell.openFile', args:['${escapedFile}']})"
-                    onkeydown="if(event.key === 'Enter' || event.key === ' ') { event.preventDefault(); vscode.postMessage({type:'action', command:'quell.openFile', args:['${escapedFile}']}); }"
+                    onclick="vscode.postMessage({type:'action', command:'quell.openFile', args:${safeArgs}})"
+                    onkeydown="if(event.key === 'Enter' || event.key === ' ') { event.preventDefault(); vscode.postMessage({type:'action', command:'quell.openFile', args:${safeArgs}}); }"
                 >
-                    <span class="finding-file" title="${f.file}">${f.file}</span>
+                    <span class="finding-file" title="${safeFileForUI}">${safeFileForUI}</span>
                     <span class="finding-count" title="${f.count} secret(s)">${f.count}</span>
                 </div>`;
             }).join('');
