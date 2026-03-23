@@ -379,6 +379,7 @@ export class SidebarProvider implements vscode.WebviewViewProvider {
                     border: 1px solid var(--glass-border);
                 }
                 .toggle-btn:hover { opacity: 0.85; transform: scale(1.03); }
+                .toggle-btn:focus-visible { outline: 2px solid var(--accent-bright); outline-offset: 2px; }
 
                 /* ── Primary action button ──────────── */
                 .btn-cta {
@@ -685,6 +686,8 @@ export class SidebarProvider implements vscode.WebviewViewProvider {
                             <span class="shield-title">AI Indexing Shield</span>
                         </div>
                         <button class="toggle-btn ${this._aiShieldActive ? 'on' : 'off'}"
+                            aria-pressed="${this._aiShieldActive ? 'true' : 'false'}"
+                            title="${this._aiShieldActive ? 'Disable AI Indexing Shield' : 'Enable AI Indexing Shield'}"
                             onclick="vscode.postMessage({type:'action', command:'${shieldCmd}'})">${shieldLabel}</button>
                     </div>
                     <div class="shield-desc">${shieldDesc}</div>
@@ -698,6 +701,8 @@ export class SidebarProvider implements vscode.WebviewViewProvider {
                             <span class="shield-title">Clipboard Auto-Sanitize</span>
                         </div>
                         <button class="toggle-btn ${autoSanitizeEnabled ? 'on' : 'off'}"
+                            aria-pressed="${autoSanitizeEnabled ? 'true' : 'false'}"
+                            title="${autoSanitizeEnabled ? 'Disable Clipboard Auto-Sanitize' : 'Enable Clipboard Auto-Sanitize'}"
                             onclick="vscode.postMessage({type:'action', command:'quell.toggleAutoSanitize'})">${autoSanitizeEnabled ? 'ON' : 'OFF'}</button>
                     </div>
                     <div class="shield-desc">${autoSanitizeEnabled ? 'Actively securing copied secrets.' : 'Warns only when secrets are copied.'}</div>
@@ -707,11 +712,11 @@ export class SidebarProvider implements vscode.WebviewViewProvider {
 
                 <!-- ── Primary actions ─────────────────── -->
                 <div class="section">
-                    <button class="btn-cta" onclick="vscode.postMessage({type:'action', command:'quell.copyRedacted'})">
+                    <button class="btn-cta" title="Copy selection with secrets securely redacted" onclick="vscode.postMessage({type:'action', command:'quell.copyRedacted'})">
                         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
                         Copy Redacted  <kbd style="font-family:var(--mono);font-size:9.5px;color:rgba(96,165,250,0.9);border:none;background:rgba(37,99,235,0.12);padding:2px 6px;border-radius:4px;letter-spacing:0.5px;">⇧C</kbd>
                     </button>
-                    <button class="btn-tool" onclick="vscode.postMessage({type:'action', command:'quell.sanitizedPaste'})" style="width:100%;justify-content:center;">
+                    <button class="btn-tool" title="Paste clipboard text with secrets automatically stripped" onclick="vscode.postMessage({type:'action', command:'quell.sanitizedPaste'})" style="width:100%;justify-content:center;">
                         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"></path><rect x="8" y="2" width="8" height="4" rx="1" ry="1"></rect></svg>
                         <span>Sanitized Paste</span>
                         <kbd style="font-family:var(--mono);font-size:9.5px;color:var(--muted);background:var(--surface);padding:2px 6px;border-radius:4px;border:1px solid var(--glass-border);margin-left:auto;letter-spacing:0.5px;">⇧V</kbd>
@@ -724,19 +729,19 @@ export class SidebarProvider implements vscode.WebviewViewProvider {
                 <div class="section">
                     <div class="section-title">Analysis</div>
                     <div class="tool-grid">
-                        <button class="btn-tool" onclick="vscode.postMessage({type:'action', command:'quell.scanWorkspace'})">
+                        <button class="btn-tool" title="Scan entire workspace for secrets" onclick="vscode.postMessage({type:'action', command:'quell.scanWorkspace'})">
                             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
                             <span>Scan All</span>
                         </button>
-                        <button class="btn-tool" onclick="vscode.postMessage({type:'action', command:'quell.redactActiveFile'})">
+                        <button class="btn-tool" title="Redact all secrets in the active file" onclick="vscode.postMessage({type:'action', command:'quell.redactActiveFile'})">
                             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line></svg>
                             <span>Redact File</span>
                         </button>
-                        <button class="btn-tool" onclick="vscode.postMessage({type:'action', command:'quell.restoreSecrets'})">
+                        <button class="btn-tool" title="Restore redacted secrets in the active file" onclick="vscode.postMessage({type:'action', command:'quell.restoreSecrets'})">
                             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 2l-2 2m-7.61 7.61a5.5 5.5 0 1 1-7.778 7.778 5.5 5.5 0 0 1 7.777-7.777zm0 0L15.5 7.5m0 0l3 3L22 7l-3-3m-3.5 3.5L19 4"></path></svg>
                             <span>Restore</span>
                         </button>
-                        <button class="btn-tool" onclick="vscode.postMessage({type:'action', command:'quell.showLog'})">
+                        <button class="btn-tool" title="Show Quell event log" onclick="vscode.postMessage({type:'action', command:'quell.showLog'})">
                             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="4 7 4 4 20 4 20 7"></polyline><line x1="9" y1="20" x2="15" y2="20"></line><line x1="12" y1="4" x2="12" y2="20"></line></svg>
                             <span>Show Log</span>
                         </button>
