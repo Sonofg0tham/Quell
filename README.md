@@ -7,6 +7,12 @@
 
 > 100% offline. Zero network calls. Zero telemetry. Your secrets never leave your machine.
 
+<!-- Screenshots — drop PNGs into assets/ and uncomment these lines
+![Quell sidebar dashboard](assets/screenshot-sidebar.png)
+![Inline diagnostics and Quick Fix](assets/screenshot-diagnostics.png)
+![Before and after redaction](assets/screenshot-redaction.png)
+-->
+
 ---
 
 ## 🚨 The Problem
@@ -64,6 +70,7 @@ Regex-based detection covering:
 | **Auth** | JWTs, Bearer tokens, Basic Auth, OAuth |
 | **Crypto** | RSA, EC, OpenSSH, PGP private keys |
 | **Hosting** | Vercel, Netlify, Heroku, DigitalOcean, Fly.io |
+| **BaaS** | Supabase (`sb_publishable_...`, `sb_secret_...`) |
 | **+ 30 more** | SendGrid, Shopify, Datadog, NPM, PyPI... |
 
 ### 📊 Shannon Entropy Analysis
@@ -87,8 +94,8 @@ Secrets stored in your **OS Keychain** via VS Code's SecretStorage API (Windows 
 ### 💬 Chat Participant (`@quell`)
 Talk to `@quell` in VS Code's chat panel. Every prompt is scanned before it reaches the AI. Use `/context` to safely share `.env` file structure.
 
-### ⚠️ Save Warning
-Get notified when saving a file that still contains raw secrets — with a one-click "Redact Now" option.
+### ⚠️ Smart Save Warnings
+Get notified when saving a file that still contains raw secrets — with a one-click "Redact Now" option. Dismiss warnings per-file for the rest of your session. They only come back if you add new secrets to that file.
 
 ---
 
@@ -102,7 +109,7 @@ Get notified when saving a file that still contains raw secrets — with a one-c
 | `quell.customPatterns` | `[]` | Custom regex patterns (`[{name, regex}]`) |
 | `quell.whitelistPatterns` | `[]` | Regex patterns to exclude from detection |
 | `quell.showInlineDecorations` | `true` | Show inline decorations for placeholders |
-| `quell.confirmBeforeRedact` | `true` | Confirmation dialog before file redaction |
+| `quell.confirmBeforeRedact` | `false` | Confirmation dialog before file redaction |
 | `quell.autoSanitizeClipboard` | `false` | Auto-replace clipboard secrets with placeholders |
 
 ---
@@ -142,10 +149,22 @@ Get notified when saving a file that still contains raw secrets — with a one-c
 
 ---
 
-## 🚀 Getting Started
+## 🎓 Guided Onboarding
 
-1. Install Quell (VSIX or Marketplace)
-2. Open any workspace
+New to Quell? On first install, a **Getting Started walkthrough** opens automatically in the VSCode Welcome tab. It walks you through:
+
+1. What Quell does and why you need it
+2. A **live demo** with fake credentials so you can see detection in action
+3. The two key shortcuts (`Ctrl+Shift+C` and `Ctrl+Shift+V`)
+4. Setting up the AI Indexing Shield
+5. How your secrets are stored (OS Keychain, fully offline)
+
+You can reopen it anytime from the Command Palette: `Quell: Getting Started`.
+
+## 🚀 Quick Start
+
+1. Install Quell from the [VS Code Marketplace](https://marketplace.visualstudio.com/items?itemName=Sonofg0tham.quell)
+2. Follow the onboarding walkthrough
 3. Press `Ctrl+Shift+C` to copy code safely for AI chat
 4. Enable the **AI Indexing Shield** in the sidebar to block AI file indexing
 5. Enable **Clipboard Auto-Sanitize** in the sidebar for maximum protection
