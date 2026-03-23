@@ -330,6 +330,10 @@ export class SecretScanner {
     //  Entropy Calculation
     // ═══════════════════════════════════
 
+    // Pre-allocated typed array to avoid GC overhead during frequent token scanning.
+    // Lazily reset using the actual string characters instead of zeroing all 256 buckets.
+    private static readonly _freqArray = new Int32Array(256);
+
     /**
      * Calculates Shannon entropy of a string.
      * Higher entropy → more random → more likely to be a secret.
@@ -339,23 +343,35 @@ export class SecretScanner {
         const len = str.length;
         if (len === 0) { return 0; }
 
-        // Fast path: use a fixed Int32Array for ASCII character frequencies (~40% faster than Map).
-        const frequencies = new Int32Array(256);
+        // Fast path: use a shared Int32Array for ASCII character frequencies
+        // to avoid allocating a new array for every single token.
+        const frequencies = SecretScanner._freqArray;
+
         for (let i = 0; i < len; i++) {
             const code = str.charCodeAt(i);
             if (code > 255) {
-                // Non-ASCII character — fall back to the Map-based implementation.
+                // Non-ASCII character — zero out the array we modified so far,
+                // then fall back to the Map-based implementation.
+                for (let j = 0; j < i; j++) {
+                    frequencies[str.charCodeAt(j)] = 0;
+                }
                 return SecretScanner._calculateEntropyFallback(str);
             }
             frequencies[code]++;
         }
 
         let entropy = 0;
-        for (let i = 0; i < 256; i++) {
-            const count = frequencies[i];
+        // Instead of looping 0-255, loop over the string to calculate entropy
+        // and zero out the counts at the same time. This avoids double passes
+        // over the full 256 array and perfectly resets state.
+        for (let i = 0; i < len; i++) {
+            const code = str.charCodeAt(i);
+            const count = frequencies[code];
             if (count > 0) {
                 const p = count / len;
                 entropy -= p * Math.log2(p);
+                // Zero it out so it's clean for the next token
+                frequencies[code] = 0;
             }
         }
 

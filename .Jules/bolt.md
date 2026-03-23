@@ -1,0 +1,3 @@
+## 2024-05-18 - High-frequency String Processing and Array Allocation
+**Learning:** Re-allocating `new Int32Array(256)` on every token when scanning thousands of tokens per file introduces significant Garbage Collection overhead and execution delay. Memory is better served with statically shared arrays when computation is synchronous.
+**Action:** Use a pre-allocated, shared static `Int32Array(256)` for calculations in `calculateEntropy`. Ensure it is lazily reset for subsequent uses (only reset modified indices instead of the full array) to maximize speed in hot paths.
