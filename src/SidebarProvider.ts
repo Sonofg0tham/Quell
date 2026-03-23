@@ -58,6 +58,15 @@ export class SidebarProvider implements vscode.WebviewViewProvider {
         }
     }
 
+    private escapeHtml(unsafe: string): string {
+        return unsafe
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;')
+            .replace(/'/g, '&#039;');
+    }
+
     private getHtmlForWebview(): string {
         const config = vscode.workspace.getConfiguration('quell');
         const iconUri = this._view?.webview.asWebviewUri(
@@ -71,7 +80,8 @@ export class SidebarProvider implements vscode.WebviewViewProvider {
         let findingsHtml = '';
         if (this.scanResults.length > 0) {
             const items = this.scanResults.slice(0, 8).map(f => {
-                const escapedFile = f.file.replace(/\\/g, '\\\\').replace(/'/g, "\\'");
+                const safeFile = this.escapeHtml(f.file);
+                const escapedFile = this.escapeHtml(f.file.replace(/\\/g, '\\\\').replace(/'/g, "\\'"));
                 return `
                 <div class="finding-item"
                     role="button"
@@ -79,7 +89,7 @@ export class SidebarProvider implements vscode.WebviewViewProvider {
                     onclick="vscode.postMessage({type:'action', command:'quell.openFile', args:['${escapedFile}']})"
                     onkeydown="if(event.key === 'Enter' || event.key === ' ') { event.preventDefault(); vscode.postMessage({type:'action', command:'quell.openFile', args:['${escapedFile}']}); }"
                 >
-                    <span class="finding-file" title="${f.file}">${f.file}</span>
+                    <span class="finding-file" title="${safeFile}">${safeFile}</span>
                     <span class="finding-count" title="${f.count} secret(s)">${f.count}</span>
                 </div>`;
             }).join('');
