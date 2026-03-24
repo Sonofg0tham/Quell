@@ -1,0 +1,4 @@
+## 2024-03-24 - Unescaped Dynamic Data in Webview Event Handlers
+**Vulnerability:** Potential Cross-Site Scripting (XSS) vulnerability via unescaped file paths rendered inside inline JavaScript event handlers (e.g. `onclick`) and HTML attributes in the `SidebarProvider` webview.
+**Learning:** Since the Webview CSP allows 'unsafe-inline' scripts, any dynamically injected data (like a file path containing a single quote or HTML tags) can escape the context and execute arbitrary code within the webview. Simple string replacement (e.g., `replace(/\\/g, '\\\\').replace(/'/g, "\\'")`) is insufficient for complete safety.
+**Prevention:** Always rigorously HTML-escape dynamic data before interpolating it into HTML strings. For data inside inline JavaScript event handlers, it must be appropriately JavaScript-escaped AND HTML-escaped using private helper methods like `_escapeJs` and `_escapeHtml`.
