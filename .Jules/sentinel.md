@@ -1,0 +1,4 @@
+## 2025-03-25 - [Fix XSS in VS Code Webview]
+**Vulnerability:** XSS vulnerability in VS Code Webview where malformed file paths were incorrectly escaped.
+**Learning:** Webview Content Security Policy allows 'unsafe-inline' scripts; all dynamic data must be rigorously HTML-escaped before interpolation into HTML strings. For inline JavaScript event handlers (e.g., onclick, onkeydown), data must be appropriately JavaScript-escaped AND HTML-escaped.
+**Prevention:** Always use dedicated `_escapeHtml` and `_escapeJs` methods when inserting variables into webview templates, keeping nested contexts in mind.
