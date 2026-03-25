@@ -99,13 +99,18 @@ export function activate(context: vscode.ExtensionContext) {
             const totalFiles = files.length;
             let totalSecrets = 0;
             let fileCount = 0;
-            for (const uri of files.slice(0, 50)) {
+
+            await Promise.all(files.slice(0, 50).map(async (uri) => {
                 try {
                     const bytes = await vscode.workspace.fs.readFile(uri);
                     const { secrets } = SecretScanner.redact(Buffer.from(bytes).toString('utf-8'), config);
-                    if (secrets.size > 0) { totalSecrets += secrets.size; fileCount++; }
+                    if (secrets.size > 0) {
+                        totalSecrets += secrets.size;
+                        fileCount++;
+                    }
                 } catch { /* skip */ }
-            }
+            }));
+
             const capNote = totalFiles > 50 ? ` (scanned 50 of ${totalFiles} files — run 'Scan Workspace' for a full audit)` : '';
             if (totalSecrets > 0) {
                 Logger.warn(`VIBE CHECK: Found ${totalSecrets} potential secret(s) across ${fileCount} file(s).`);
@@ -409,31 +414,36 @@ export function activate(context: vscode.ExtensionContext) {
 
             const total = files.length;
             let processed = 0;
+            const CONCURRENCY_LIMIT = 5;
 
-            for (const uri of files) {
+            // Process files in batches to prevent EMFILE/OOM and allow cancellation
+            for (let i = 0; i < total; i += CONCURRENCY_LIMIT) {
                 if (token.isCancellationRequested) { break; }
+                const batch = files.slice(i, i + CONCURRENCY_LIMIT);
 
-                processed++;
-                progress.report({
-                    message: `${processed}/${total} files…`,
-                    increment: (1 / total) * 100,
-                });
+                await Promise.all(batch.map(async (uri) => {
+                    try {
+                        const rawBytes = await vscode.workspace.fs.readFile(uri);
+                        const content = Buffer.from(rawBytes).toString('utf-8');
+                        const { secrets, detectedTypes } = SecretScanner.redact(content, config);
 
-                try {
-                    const rawBytes = await vscode.workspace.fs.readFile(uri);
-                    const content = Buffer.from(rawBytes).toString('utf-8');
-                    const { secrets, detectedTypes } = SecretScanner.redact(content, config);
-
-                    if (secrets.size > 0) {
-                        const relPath = vscode.workspace.asRelativePath(uri);
-                        totalSecrets += secrets.size;
-                        const typesArr = Array.from(detectedTypes);
-                        typesArr.forEach((t) => allTypes.add(t));
-                        findings.push({ file: relPath, count: secrets.size, types: typesArr });
+                        if (secrets.size > 0) {
+                            const relPath = vscode.workspace.asRelativePath(uri);
+                            totalSecrets += secrets.size;
+                            const typesArr = Array.from(detectedTypes);
+                            typesArr.forEach((t) => allTypes.add(t));
+                            findings.push({ file: relPath, count: secrets.size, types: typesArr });
+                        }
+                    } catch {
+                        // Skip unreadable files
+                    } finally {
+                        processed++;
+                        progress.report({
+                            message: `${processed}/${total} files…`,
+                            increment: (1 / total) * 100,
+                        });
                     }
-                } catch {
-                    // Skip unreadable files
-                }
+                }));
             }
         });
 
