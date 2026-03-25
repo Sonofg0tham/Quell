@@ -12,7 +12,7 @@
  * Required token permissions: contents:write, pull-requests:write, issues:write, security-events:read
  */
 
-const GEMINI_MODEL = 'gemini-2.0-flash';
+const GEMINI_MODEL = 'gemini-3.1-flash-lite-preview';
 
 const GITHUB_TOKEN  = process.env.GITHUB_TOKEN;
 const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
