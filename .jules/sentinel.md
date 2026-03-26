@@ -1,0 +1,4 @@
+## 2024-03-26 - Arbitrary Command Execution from Webview
+**Vulnerability:** The webview handler `onDidReceiveMessage` accepted any `command` string from `webview.postMessage` and directly passed it to `vscode.commands.executeCommand`. This could allow an attacker who achieved XSS in the webview to execute arbitrary VS Code commands.
+**Learning:** Webviews in VS Code are highly privileged environments if they have access to `executeCommand`. Never trust inputs sent from the webview back to the extension host.
+**Prevention:** Implement strict whitelisting or pattern matching (e.g., ensuring `command.startsWith('extensionName.')`) for commands coming from webviews.
