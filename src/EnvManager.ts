@@ -43,41 +43,52 @@ export class EnvManager {
         Logger.info(`ENV: Found ${envFiles.length} .env file(s) to redact.`);
         let combinedContent = '';
 
-        for (const uri of envFiles) {
-            const relPath = vscode.workspace.asRelativePath(uri);
-            combinedContent += `\n# ─── ${relPath} (Redacted by Quell) ───\n`;
+        const CONCURRENCY_LIMIT = 5;
+        const total = envFiles.length;
 
-            try {
-                // Async file read — does NOT block the extension host
-                const rawBytes = await vscode.workspace.fs.readFile(uri);
-                const fileContent = Buffer.from(rawBytes).toString('utf-8');
-                const lines = fileContent.split(/\r?\n/);
+        for (let i = 0; i < total; i += CONCURRENCY_LIMIT) {
+            const batch = envFiles.slice(i, i + CONCURRENCY_LIMIT);
 
-                for (const line of lines) {
-                    const trimmed = line.trim();
+            const batchResults = await Promise.all(batch.map(async (uri) => {
+                const relPath = vscode.workspace.asRelativePath(uri);
+                let fileResult = `\n# ─── ${relPath} (Redacted by Quell) ───\n`;
 
-                    // Preserve blank lines and comments
-                    if (!trimmed || trimmed.startsWith('#')) {
-                        combinedContent += line + '\n';
-                        continue;
+                try {
+                    // Async file read — does NOT block the extension host
+                    const rawBytes = await vscode.workspace.fs.readFile(uri);
+                    const fileContent = Buffer.from(rawBytes).toString('utf-8');
+                    const lines = fileContent.split(/\r?\n/);
+
+                    for (const line of lines) {
+                        const trimmed = line.trim();
+
+                        // Preserve blank lines and comments
+                        if (!trimmed || trimmed.startsWith('#')) {
+                            fileResult += line + '\n';
+                            continue;
+                        }
+
+                        const equalsIdx = trimmed.indexOf('=');
+                        if (equalsIdx > 0) {
+                            const key = trimmed.substring(0, equalsIdx).trim();
+                            // Expose key name, mask value
+                            fileResult += `${key}=<HIDDEN_BY_QUELL>\n`;
+                        } else {
+                            fileResult += line + ' # <Warning: Unparsed Line>\n';
+                        }
                     }
 
-                    const equalsIdx = trimmed.indexOf('=');
-                    if (equalsIdx > 0) {
-                        const key = trimmed.substring(0, equalsIdx).trim();
-                        // Expose key name, mask value
-                        combinedContent += `${key}=<HIDDEN_BY_QUELL>\n`;
-                    } else {
-                        combinedContent += line + ' # <Warning: Unparsed Line>\n';
-                    }
+                    Logger.info(`ENV: Redacted ${relPath}`);
+                } catch (error) {
+                    const errMsg = error instanceof Error ? error.message : String(error);
+                    Logger.error(`ENV: Failed to read ${relPath}: ${errMsg}`);
+                    fileResult += `# Error reading file: ${errMsg}\n`;
                 }
 
-                Logger.info(`ENV: Redacted ${relPath}`);
-            } catch (error) {
-                const errMsg = error instanceof Error ? error.message : String(error);
-                Logger.error(`ENV: Failed to read ${relPath}: ${errMsg}`);
-                combinedContent += `# Error reading file: ${errMsg}\n`;
-            }
+                return fileResult;
+            }));
+
+            combinedContent += batchResults.join('');
         }
 
         return combinedContent.trim();
