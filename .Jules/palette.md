@@ -5,3 +5,7 @@
 ## 2024-05-15 - Stateful Toggle Button Accessibility in Webviews
 **Learning:** Toggle buttons (like "AI Indexing Shield") visually indicated their state via CSS classes (`.on`/`.off`) and text ("ON"/"OFF"), but lacked semantic `aria-pressed` states for screen readers. Furthermore, while primary buttons (`.btn-cta`, `.btn-tool`) had `:focus-visible` styles for keyboard navigation, the smaller `.toggle-btn` elements did not, making keyboard tabbing invisible.
 **Action:** Always ensure custom toggle buttons include dynamic `aria-pressed="true|false"` attributes and that ALL interactive elements receive explicit `:focus-visible` styling to support keyboard navigation in custom VS Code webviews.
+
+## 2024-05-16 - Dynamically Injected Warning Banners in Webviews
+**Learning:** Found that dynamically injected warning banners (like the clipboard warning in the sidebar) appeared visually but were not announced by screen readers when they popped up, as they lacked ARIA live region attributes.
+**Action:** Always ensure that dynamically appearing alert or warning banners in custom VS Code webviews include `role="alert"` or `aria-live="assertive"` so that assistive technologies announce the urgent information immediately upon injection.
