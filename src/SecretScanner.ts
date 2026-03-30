@@ -169,6 +169,13 @@ export class SecretScanner {
             regex: new RegExp(p.regex.source, p.regex.flags.includes('g') ? p.regex.flags : p.regex.flags + 'g'),
         }));
 
+    // ── Pattern Caches ──
+    private static _lastWhitelistSignature: string = '';
+    private static _cachedWhitelistRegexps: RegExp[] = [];
+
+    private static _lastCustomSignature: string = '';
+    private static _cachedCustomRegexps: Array<{ name: string; regex: RegExp }> = [];
+
     // ═════════════════════════════════════════
     //  Public API
     // ═════════════════════════════════════════
@@ -185,10 +192,15 @@ export class SecretScanner {
         const secrets = new Map<string, string>();
         const detectedTypes = new Set<string>();
 
-        // Build whitelist regex set
-        const whitelistRegexps = config.whitelistPatterns
-            .map((p) => { try { return new RegExp(p); } catch { return null; } })
-            .filter((r): r is RegExp => r !== null);
+        // Build or reuse whitelist regex set
+        const whitelistSignature = config.whitelistPatterns.join('|||');
+        if (whitelistSignature !== this._lastWhitelistSignature) {
+            this._cachedWhitelistRegexps = config.whitelistPatterns
+                .map((p) => { try { return new RegExp(p); } catch { return null; } })
+                .filter((r): r is RegExp => r !== null);
+            this._lastWhitelistSignature = whitelistSignature;
+        }
+        const whitelistRegexps = this._cachedWhitelistRegexps;
 
         const isWhitelisted = (value: string): boolean => {
             return whitelistRegexps.some((re) => re.test(value));
@@ -227,16 +239,25 @@ export class SecretScanner {
         }
 
         // ── Step 2: User-defined Custom Patterns ──
-        for (const custom of config.customPatterns) {
-            try {
-                const customRegex = new RegExp(custom.regex, 'g');
-                const matches = text.match(customRegex);
-                if (matches) {
-                    const uniqueMatches = [...new Set(matches)];
-                    uniqueMatches.forEach((match) => replaceSecret(match, custom.name));
+        // Build or reuse custom patterns set
+        const customSignature = config.customPatterns.map(p => p.name + '::' + p.regex).join('|||');
+        if (customSignature !== this._lastCustomSignature) {
+            this._cachedCustomRegexps = [];
+            for (const custom of config.customPatterns) {
+                try {
+                    this._cachedCustomRegexps.push({ name: custom.name, regex: new RegExp(custom.regex, 'g') });
+                } catch {
+                    // Silently skip invalid user-defined patterns
                 }
-            } catch {
-                // Silently skip invalid user-defined patterns
+            }
+            this._lastCustomSignature = customSignature;
+        }
+
+        for (const custom of this._cachedCustomRegexps) {
+            const matches = text.match(custom.regex);
+            if (matches) {
+                const uniqueMatches = [...new Set(matches)];
+                uniqueMatches.forEach((match) => replaceSecret(match, custom.name));
             }
         }
 
