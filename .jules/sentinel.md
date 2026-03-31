@@ -1,0 +1,4 @@
+## 2024-05-24 - [Arbitrary Command Execution in Webview]
+**Vulnerability:** The webview message handler `onDidReceiveMessage` was blindly passing the `data.command` string to `vscode.commands.executeCommand` without validating that the command belonged to the extension.
+**Learning:** Webviews in VS Code run in a separate context and communicate via message passing. If a webview is compromised (e.g., via XSS), it can send arbitrary messages back to the extension host. Without validation, this allows the compromised webview to execute *any* VS Code command (like `workbench.action.terminal.new`, `vscode.open`, etc.), potentially leading to RCE or data exfiltration.
+**Prevention:** Always strictly validate and whitelist command strings received from webviews before passing them to `vscode.commands.executeCommand`. For example, ensure the command starts with the extension's prefix (e.g., `command.startsWith('quell.')`).
