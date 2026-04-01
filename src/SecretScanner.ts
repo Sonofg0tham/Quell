@@ -169,6 +169,10 @@ export class SecretScanner {
             regex: new RegExp(p.regex.source, p.regex.flags.includes('g') ? p.regex.flags : p.regex.flags + 'g'),
         }));
 
+    // Caches for configuration-driven compiled RegExps
+    private static whitelistRegexCache = new WeakMap<string[], RegExp[]>();
+    private static customRegexCache = new WeakMap<Array<{ name: string; regex: string }>, Array<{ name: string; regex: RegExp }>>();
+
     // ═════════════════════════════════════════
     //  Public API
     // ═════════════════════════════════════════
@@ -185,36 +189,44 @@ export class SecretScanner {
         const secrets = new Map<string, string>();
         const detectedTypes = new Set<string>();
 
-        // Build whitelist regex set
-        const whitelistRegexps = config.whitelistPatterns
-            .map((p) => { try { return new RegExp(p); } catch { return null; } })
-            .filter((r): r is RegExp => r !== null);
+        // Build or retrieve whitelist regex set from cache
+        let whitelistRegexps = this.whitelistRegexCache.get(config.whitelistPatterns);
+        if (!whitelistRegexps) {
+            whitelistRegexps = config.whitelistPatterns
+                .map((p) => { try { return new RegExp(p); } catch { return null; } })
+                .filter((r): r is RegExp => r !== null);
+            this.whitelistRegexCache.set(config.whitelistPatterns, whitelistRegexps);
+        }
 
         const isWhitelisted = (value: string): boolean => {
             return whitelistRegexps.some((re) => re.test(value));
         };
 
+        // Reverse map for O(1) secret value -> placeholder lookups
+        const valueToPlaceholder = new Map<string, string>();
+
         const replaceSecret = (secretValue: string, typeName: string): void => {
             if (isWhitelisted(secretValue)) { return; }
 
             // Check if this exact secret value was already captured
-            let placeholder = '';
-            for (const [key, value] of secrets.entries()) {
-                if (value === secretValue) {
-                    placeholder = key;
-                    break;
-                }
-            }
+            let placeholder = valueToPlaceholder.get(secretValue);
 
             if (!placeholder) {
                 const uuid = crypto.randomUUID().replace(/-/g, '').substring(0, 12);
                 placeholder = `{{SECRET_${uuid}}}`;
                 secrets.set(placeholder, secretValue);
+                valueToPlaceholder.set(secretValue, placeholder);
                 detectedTypes.add(typeName);
             }
 
-            // Use split/join for global replacement (safe for special regex chars in secrets)
-            redactedText = redactedText.split(secretValue).join(placeholder);
+            // If the text doesn't contain the secret, we can skip replacing
+            if (redactedText.includes(secretValue)) {
+                // Use split/join for global replacement (safe for special regex chars in secrets)
+                const parts = redactedText.split(secretValue);
+                if (parts.length > 1) {
+                    redactedText = parts.join(placeholder);
+                }
+            }
         };
 
         // ── Step 1: Built-in Regex Patterns ──
@@ -227,16 +239,24 @@ export class SecretScanner {
         }
 
         // ── Step 2: User-defined Custom Patterns ──
-        for (const custom of config.customPatterns) {
-            try {
-                const customRegex = new RegExp(custom.regex, 'g');
-                const matches = text.match(customRegex);
-                if (matches) {
-                    const uniqueMatches = [...new Set(matches)];
-                    uniqueMatches.forEach((match) => replaceSecret(match, custom.name));
+        let customRegexps = this.customRegexCache.get(config.customPatterns);
+        if (!customRegexps) {
+            customRegexps = [];
+            for (const custom of config.customPatterns) {
+                try {
+                    customRegexps.push({ name: custom.name, regex: new RegExp(custom.regex, 'g') });
+                } catch {
+                    // Silently skip invalid user-defined patterns
                 }
-            } catch {
-                // Silently skip invalid user-defined patterns
+            }
+            this.customRegexCache.set(config.customPatterns, customRegexps);
+        }
+
+        for (const custom of customRegexps) {
+            const matches = text.match(custom.regex);
+            if (matches) {
+                const uniqueMatches = [...new Set(matches)];
+                uniqueMatches.forEach((match) => replaceSecret(match, custom.name));
             }
         }
 
