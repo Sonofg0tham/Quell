@@ -25,10 +25,17 @@ export class SidebarProvider implements vscode.WebviewViewProvider {
         webviewView.webview.onDidReceiveMessage(data => {
             switch (data.type) {
                 case 'action':
-                    if (data.args) {
-                        vscode.commands.executeCommand(data.command, ...data.args);
+                    // Security enhancement: Prevent arbitrary command execution from webview.
+                    // Webview messages shouldn't be fully trusted (XSS mitigation).
+                    // Only allow commands prefixed with our extension's identifier 'quell.'
+                    if (typeof data.command === 'string' && data.command.startsWith('quell.')) {
+                        if (data.args) {
+                            vscode.commands.executeCommand(data.command, ...data.args);
+                        } else {
+                            vscode.commands.executeCommand(data.command);
+                        }
                     } else {
-                        vscode.commands.executeCommand(data.command);
+                        console.warn(`Blocked unauthorized command execution attempt from webview: ${data.command}`);
                     }
                     break;
             }

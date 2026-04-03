@@ -1,0 +1,4 @@
+## 2024-04-03 - Webview Command Execution Vulnerability
+**Vulnerability:** The webview message listener in `SidebarProvider.ts` directly executes any command string sent from the webview via `vscode.commands.executeCommand(data.command)` without validation. If the webview was susceptible to XSS, an attacker could execute arbitrary VS Code commands, potentially leading to Remote Code Execution (RCE) or sensitive data access.
+**Learning:** Untrusted webview inputs must always be validated or sanitized before executing privileged actions. Even internal communications (extension <-> webview) should assume the webview might be compromised.
+**Prevention:** Strictly validate or whitelist command strings before passing them to `vscode.commands.executeCommand`. Ensure commands are prefixed with the expected extension prefix (e.g., `quell.`) or checked against a predefined whitelist.
