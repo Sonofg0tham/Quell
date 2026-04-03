@@ -25,10 +25,15 @@ export class SidebarProvider implements vscode.WebviewViewProvider {
         webviewView.webview.onDidReceiveMessage(data => {
             switch (data.type) {
                 case 'action':
-                    if (data.args) {
-                        vscode.commands.executeCommand(data.command, ...data.args);
+                    // Security enhancement: Restrict commands to prevent arbitrary execution
+                    if (typeof data.command === 'string' && data.command.startsWith('quell.')) {
+                        if (data.args) {
+                            vscode.commands.executeCommand(data.command, ...data.args);
+                        } else {
+                            vscode.commands.executeCommand(data.command);
+                        }
                     } else {
-                        vscode.commands.executeCommand(data.command);
+                        console.error('Invalid command attempt:', data.command);
                     }
                     break;
             }
