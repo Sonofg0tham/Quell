@@ -1,0 +1,4 @@
+## 2024-05-24 - Webview Arbitrary Command Execution Vulnerability
+**Vulnerability:** The webview in `SidebarProvider.ts` accepted arbitrary command strings via `onDidReceiveMessage` and executed them via `vscode.commands.executeCommand` without any validation. This could allow malicious code injected into the webview to execute arbitrary VS Code commands.
+**Learning:** In VS Code extensions with webviews, messages received from the webview context must be treated as untrusted input. Directly passing `data.command` to `executeCommand` opens up arbitrary command execution if the webview content is compromised (e.g. via XSS).
+**Prevention:** Strictly validate that any requested command string from a webview matches a permitted prefix (e.g., `typeof data.command === 'string' && data.command.startsWith('quell.')`) or a pre-approved list of commands before executing it.
