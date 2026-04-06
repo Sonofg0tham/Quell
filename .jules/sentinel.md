@@ -1,0 +1,4 @@
+## 2024-04-06 - [Prevent Arbitrary Command Execution in Webview IPC]
+**Vulnerability:** The webview message handler in `SidebarProvider.ts` blindly passed `data.command` to `vscode.commands.executeCommand()` without validating the command string or its origin, potentially allowing a malicious payload from the webview to execute arbitrary VS Code commands.
+**Learning:** In VS Code extensions using Webviews, any `onDidReceiveMessage` callback must strictly validate inputs. Since the webview runs in an isolated context but communicates back to the extension host, unsanitized commands act as a conduit for privilege escalation.
+**Prevention:** Always prefix extension-specific commands (e.g. `quell.`) and validate that incoming command requests from webviews explicitly match this prefix and type before execution.
