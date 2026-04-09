@@ -194,27 +194,26 @@ export class SecretScanner {
             return whitelistRegexps.some((re) => re.test(value));
         };
 
+        // Reverse mapping for O(1) lookups of already captured secrets
+        const valueToPlaceholder = new Map<string, string>();
+
         const replaceSecret = (secretValue: string, typeName: string): void => {
             if (isWhitelisted(secretValue)) { return; }
 
             // Check if this exact secret value was already captured
-            let placeholder = '';
-            for (const [key, value] of secrets.entries()) {
-                if (value === secretValue) {
-                    placeholder = key;
-                    break;
-                }
-            }
+            let placeholder = valueToPlaceholder.get(secretValue);
 
             if (!placeholder) {
-                const uuid = crypto.randomUUID().replace(/-/g, '').substring(0, 12);
+                // Use replaceAll instead of regex global replace for faster UUID sanitization
+                const uuid = crypto.randomUUID().replaceAll('-', '').substring(0, 12);
                 placeholder = `{{SECRET_${uuid}}}`;
                 secrets.set(placeholder, secretValue);
+                valueToPlaceholder.set(secretValue, placeholder);
                 detectedTypes.add(typeName);
             }
 
-            // Use split/join for global replacement (safe for special regex chars in secrets)
-            redactedText = redactedText.split(secretValue).join(placeholder);
+            // Use replaceAll for global replacement (faster and more memory efficient than split.join)
+            redactedText = redactedText.replaceAll(secretValue, placeholder);
         };
 
         // ── Step 1: Built-in Regex Patterns ──
