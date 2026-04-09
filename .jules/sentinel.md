@@ -1,0 +1,4 @@
+## 2024-04-09 - [CRITICAL] Arbitrary Command Execution via Webview IPC
+**Vulnerability:** The `SidebarProvider` webview accepted `onDidReceiveMessage` IPC messages from the Webview containing a `command` field and passed it directly to `vscode.commands.executeCommand(data.command)` without validation.
+**Learning:** Webviews must be treated as untrusted boundaries. Even if the webview HTML is generated locally, incoming IPC messages must be strictly validated against a static allowlist before execution to prevent arbitrary command execution vulnerabilities on the host machine.
+**Prevention:** Always validate `data.command` against a static Set of allowed commands (e.g. `ALLOWED_COMMANDS`) before calling `vscode.commands.executeCommand`. Do not blindly trust `data.command` from `onDidReceiveMessage`.

@@ -9,6 +9,19 @@ export class SidebarProvider implements vscode.WebviewViewProvider {
     private _aiShieldActive = false;
     private _clipboardWarning = false;
 
+    private static readonly ALLOWED_COMMANDS = new Set([
+        'quell.openFile',
+        'quell.enableAiShield',
+        'quell.disableAiShield',
+        'quell.toggleAutoSanitize',
+        'quell.copyRedacted',
+        'quell.sanitizedPaste',
+        'quell.scanWorkspace',
+        'quell.redactActiveFile',
+        'quell.restoreSecrets',
+        'quell.showLog'
+    ]);
+
     constructor(private readonly _extensionUri: vscode.Uri) { }
 
     public resolveWebviewView(
@@ -25,6 +38,10 @@ export class SidebarProvider implements vscode.WebviewViewProvider {
         webviewView.webview.onDidReceiveMessage(data => {
             switch (data.type) {
                 case 'action':
+                    if (typeof data.command !== 'string' || !SidebarProvider.ALLOWED_COMMANDS.has(data.command)) {
+                        console.warn(`Quell Sidebar: blocked execution of unauthorized command '${data.command}'`);
+                        return;
+                    }
                     if (data.args) {
                         vscode.commands.executeCommand(data.command, ...data.args);
                     } else {
