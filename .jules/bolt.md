@@ -1,3 +1,6 @@
 ## 2024-05-24 - Parallelize I/O-bound tasks in workspace scans
 **Learning:** Sequential `for` loops reading files block the event loop and increase latency for workspace scanning tasks. Since file reading and secret scanning don't depend on sequential execution order, they can be processed concurrently.
 **Action:** Parallelize I/O-bound tasks in workspace scans (like file reading and secret scanning) using `Promise.all` with `.map()` instead of sequential `for` loops to significantly reduce execution time.
+## 2024-05-18 - Optimize SecretScanner lookup and replacement overhead
+**Learning:** In performance-critical hot paths involving text scanning (`SecretScanner.redact`), the prior implementation exhibited $O(N^2)$ complexity due to repeated linear lookups via `.entries()` combined with intermediate array allocation via `split().join()`.
+**Action:** Always maintain a reverse-lookup Map (e.g., `valueToPlaceholder`) alongside sequential storage to reduce $O(N)$ checks to $O(1)$. Replace `.split(delimiter).join(replacement)` with `.replaceAll(delimiter, () => replacement)` with a function callback to eliminate intermediate arrays while preserving safety against special regex replacement tokens.
