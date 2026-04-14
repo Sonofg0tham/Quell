@@ -299,7 +299,7 @@ export function activate(context: vscode.ExtensionContext) {
         }
 
         // ── Confirmation dialog (configurable) ──
-        const confirmEnabled = vscode.workspace.getConfiguration('quell').get<boolean>('confirmBeforeRedact', true);
+        const confirmEnabled = vscode.workspace.getConfiguration('quell').get<boolean>('confirmBeforeRedact', false);
         if (confirmEnabled) {
             const typesList = Array.from(detectedTypes).join(', ');
             const choice = await vscode.window.showWarningMessage(
@@ -502,6 +502,14 @@ export function activate(context: vscode.ExtensionContext) {
     const saveWatcher = vscode.workspace.onWillSaveTextDocument((event) => {
         const config = getConfig();
         const text = event.document.getText();
+
+        // Skip large files to avoid blocking the save with a synchronous scan.
+        const MAX_SAVE_SCAN_BYTES = 1_000_000; // 1 MB
+        if (text.length > MAX_SAVE_SCAN_BYTES) {
+            Logger.info(`SAVE SCAN: Skipped ${vscode.workspace.asRelativePath(event.document.uri)} — file exceeds 1MB size limit.`);
+            return;
+        }
+
         const { secrets, detectedTypes } = SecretScanner.redact(text, config);
 
         if (secrets.size > 0) {

@@ -56,6 +56,8 @@ Select code → press the shortcut → paste into any AI chat. Secrets are repla
 ### 📥 Sanitized Paste (`Ctrl+Shift+V`)
 Paste from any source with secrets automatically stripped. Works with code copied from browsers, terminals, or other files.
 
+> **Note:** Quell rebinds `Ctrl+Shift+V` in the editor, which conflicts with VSCode's built-in "Paste without formatting" in some contexts. If you prefer the default binding, remap Quell's Sanitised Paste via **File > Preferences > Keyboard Shortcuts**.
+
 ### 🔍 75+ Secret Patterns
 Regex-based detection covering:
 

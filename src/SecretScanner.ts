@@ -48,6 +48,8 @@ export class SecretScanner {
         { name: 'Azure SAS Token', regex: /[?&]sig=[A-Za-z0-9%+\/=]{40,}/ },
 
         // ── AI / ML Providers ────────────────
+        // Note: Google Gemini keys (AIzaSy...) are a strict subset of the Google API Key
+        // pattern above and are already covered by it.
         { name: 'OpenAI API Key', regex: /sk-[a-zA-Z0-9]{20}T3BlbkFJ[a-zA-Z0-9]{20}/ },
         { name: 'OpenAI API Key (Project)', regex: /sk-proj-[a-zA-Z0-9\-_]{40,}/ },
         { name: 'OpenAI API Key (Svc)', regex: /sk-svcacct-[a-zA-Z0-9\-_]{40,}/ },
@@ -55,7 +57,6 @@ export class SecretScanner {
         { name: 'Hugging Face Token', regex: /hf_[a-zA-Z0-9]{34}/ },
         { name: 'Cohere API Key', regex: /co-[a-zA-Z0-9]{40}/ },
         { name: 'Replicate API Token', regex: /r8_[a-zA-Z0-9]{37}/ },
-        { name: 'Google Gemini API Key', regex: /AIzaSy[0-9A-Za-z\-_]{33}/ },
 
         // ── Payment Providers ────────────────
         { name: 'Stripe Secret Key', regex: /sk_(live|test)_[0-9a-zA-Z_]{10,99}/ },
@@ -146,7 +147,6 @@ export class SecretScanner {
         { name: 'Datadog API Key', regex: /dd(?:api|app)key[=:]\s*['"]?[a-f0-9]{32,40}['"]?/i },
         { name: 'Sentry DSN', regex: /https:\/\/[a-f0-9]{32}@[a-z0-9.]+\.sentry\.io\/\d+/ },
         { name: 'New Relic API Key', regex: /NRAK-[A-Z0-9]{27}/ },
-        { name: 'Segment Write Key', regex: /sk_[a-zA-Z0-9]{32}/ }, // Also catches some Stripe, matched later
 
         // ── Supabase / Firebase ──────────────
         { name: 'Supabase Service Role Key', regex: /sbp_[a-f0-9]{40}/ },
@@ -194,8 +194,28 @@ export class SecretScanner {
             return whitelistRegexps.some((re) => re.test(value));
         };
 
+        // Obvious placeholder values to skip for Password/Token in Assignment matches.
+        // These produce noisy false positives in docs, READMEs, and example configs.
+        const PLACEHOLDER_VALUES = new Set([
+            'changeme', 'password', 'your_password', 'your_password_here',
+            'xxx', 'xxxxxx', 'example', 'placeholder', '123456', 'hunter2',
+            'test', 'secret', 'your_secret', 'your_secret_here',
+            'your_api_key', 'your_api_key_here', 'your_token', 'your_token_here',
+        ]);
+
+        const isPlaceholderAssignment = (typeName: string, match: string): boolean => {
+            if (typeName !== 'Password in Assignment' && typeName !== 'Token in Assignment') {
+                return false;
+            }
+            // Extract the quoted value from e.g. password="changeme"
+            const m = match.match(/['"]([^'"]+)['"]/);
+            if (!m) { return false; }
+            return PLACEHOLDER_VALUES.has(m[1].toLowerCase());
+        };
+
         const replaceSecret = (secretValue: string, typeName: string): void => {
             if (isWhitelisted(secretValue)) { return; }
+            if (isPlaceholderAssignment(typeName, secretValue)) { return; }
 
             // Check if this exact secret value was already captured
             let placeholder = '';
@@ -281,10 +301,6 @@ export class SecretScanner {
 
                 // Skip SCREAMING_SNAKE_CASE identifiers (e.g. VITE_SUPABASE_ANON_KEY)
                 if (/^[A-Z][A-Z0-9]*(_[A-Z0-9]+)+$/.test(token)) { continue; }
-
-                // Skip camelCase / PascalCase identifiers that are purely alphabetic (no digits).
-                // Base64-like secrets almost always contain digits, so tokens with digits are NOT skipped.
-                if (/^[a-zA-Z]+$/.test(token) && /[a-z]/.test(token) && /[A-Z]/.test(token)) { continue; }
 
                 // Skip environment variable references (import.meta.env.*, process.env.*)
                 if (/^(import\.meta\.env|process\.env)\./i.test(token)) { continue; }
