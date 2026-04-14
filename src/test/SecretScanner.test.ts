@@ -270,6 +270,24 @@ test('detects NPM Token', () => {
 });
 
 
+// ── Supabase ─────────────────────────
+console.log('\n🟢 Supabase Patterns:');
+
+test('detects Supabase publishable (anon) key', () => {
+    assertSecretDetected(
+        'sb_publishable_abcdefghijklmnopqrstuvwxyz1234567890',
+        'Supabase Publishable Key'
+    );
+});
+
+test('detects Supabase secret (service role) key', () => {
+    assertSecretDetected(
+        'sb_secret_abcdefghijklmnopqrstuvwxyz1234567890',
+        'Supabase Secret Key'
+    );
+});
+
+
 // ── Password Assignments ─────────────
 console.log('\n🔒 Password/Token Assignment Patterns:');
 
