@@ -2,6 +2,19 @@ import * as vscode from 'vscode';
 import { SecretScanner } from './SecretScanner';
 
 export class SidebarProvider implements vscode.WebviewViewProvider {
+    private static readonly ALLOWED_COMMANDS = new Set([
+        'quell.openFile',
+        'quell.enableAiShield',
+        'quell.disableAiShield',
+        'quell.toggleAutoSanitize',
+        'quell.copyRedacted',
+        'quell.sanitizedPaste',
+        'quell.scanWorkspace',
+        'quell.redactActiveFile',
+        'quell.restoreSecrets',
+        'quell.showLog'
+    ]);
+
     private _view?: vscode.WebviewView;
     private sessionScans = 0;
     private sessionSecrets = 0;
@@ -25,10 +38,14 @@ export class SidebarProvider implements vscode.WebviewViewProvider {
         webviewView.webview.onDidReceiveMessage(data => {
             switch (data.type) {
                 case 'action':
-                    if (data.args) {
-                        vscode.commands.executeCommand(data.command, ...data.args);
+                    if (typeof data.command === 'string' && SidebarProvider.ALLOWED_COMMANDS.has(data.command)) {
+                        if (data.args) {
+                            vscode.commands.executeCommand(data.command, ...data.args);
+                        } else {
+                            vscode.commands.executeCommand(data.command);
+                        }
                     } else {
-                        vscode.commands.executeCommand(data.command);
+                        console.warn(`[Quell] Prevented execution of unauthorized command: ${data.command}`);
                     }
                     break;
             }
