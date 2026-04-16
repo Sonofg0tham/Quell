@@ -330,7 +330,7 @@
         "test": "tsc -p ./tsconfig.test.json && node out/packages/scanner/src/test/SecretScanner.test.js"
     },
     "devDependencies": {
-        "@types/vscode": "^1.110.0",
+        "@types/vscode": "^1.116.0",
         "@types/node": "20.x",
         "typescript": "^5.3.3"
     },
