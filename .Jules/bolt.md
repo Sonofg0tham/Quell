@@ -1,0 +1,4 @@
+## 2026-04-16 - O(N) map lookups inside replace operations
+
+**Learning:** When scanning for previously captured secrets in `SecretScanner.redact`, iterating over a Map's entries `for (const [key, value] of secrets.entries())` creates an (N)$ lookup on every match. This doesn't scale well for large files with many secrets. Additionally, the `.split().join()` pattern for string replacement allocates unnecessary intermediate arrays, but simply changing it to `.replaceAll(secretValue, placeholder)` is unsafe if `placeholder` contains special characters like `$`.
+**Action:** Always maintain a reverse-lookup Map (`valueToPlaceholder`) alongside the primary map to enable (1)$ lookups. When replacing `.split().join()` with `.replaceAll()`, use a callback function (`() => placeholder`) for the replacement argument to safely handle any potential regex special characters and ensure string-allocation efficiency.
