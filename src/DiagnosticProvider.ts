@@ -1,5 +1,6 @@
 import * as vscode from 'vscode';
-import { SecretScanner, ScannerConfig, DEFAULT_CONFIG } from '../packages/scanner/src';
+import { SecretScanner } from '../packages/scanner/src';
+import { getConfig } from './configHelper';
 
 export class DiagnosticProvider implements vscode.CodeActionProvider {
     private static collection: vscode.DiagnosticCollection;
@@ -46,16 +47,7 @@ export class DiagnosticProvider implements vscode.CodeActionProvider {
     }
 
     public static updateDiagnostics(document: vscode.TextDocument): void {
-        const config = vscode.workspace.getConfiguration('quell');
-        const enableEntropy = config.get<boolean>('enableEntropyScanning', DEFAULT_CONFIG.enableEntropy);
-        const scannerConfig: ScannerConfig = {
-            enableEntropy,
-            entropyThreshold: config.get<number>('entropyThreshold', DEFAULT_CONFIG.entropyThreshold),
-            minimumTokenLength: config.get<number>('minimumTokenLength', DEFAULT_CONFIG.minimumTokenLength),
-            customPatterns: config.get<Array<{ name: string; regex: string }>>('customPatterns', DEFAULT_CONFIG.customPatterns),
-            whitelistPatterns: config.get<string[]>('whitelistPatterns', DEFAULT_CONFIG.whitelistPatterns),
-            redactTestKeys: config.get<boolean>('redactTestKeys', DEFAULT_CONFIG.redactTestKeys),
-        };
+        const scannerConfig = getConfig();
 
         const uriString = document.uri.toString();
         const text = document.getText();
