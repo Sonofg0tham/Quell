@@ -141,6 +141,12 @@
                 "title": "Open Demo File",
                 "category": "Quell",
                 "icon": "$(play)"
+            },
+            {
+                "command": "quell.clearVault",
+                "title": "Clear Vault (delete all stored secrets)",
+                "category": "Quell",
+                "icon": "$(trash)"
             }
         ],
         "keybindings": [
@@ -275,6 +281,12 @@
                     "default": false,
                     "description": "Automatically intercept and sanitize secrets detected on your OS clipboard. Crucial for pasting safely into native AI Chats like Cursor and Windsurf.",
                     "order": 8
+                },
+                "quell.redactTestKeys": {
+                    "type": "boolean",
+                    "default": false,
+                    "description": "When enabled, officially-published test/demo credentials (e.g. AKIAIOSFODNN7EXAMPLE) are treated as real secrets and redacted. Disabled by default because these values are intentionally safe — they appear in READMEs, tutorials, and Quell's own demo file.",
+                    "order": 9
                 }
             }
         },
