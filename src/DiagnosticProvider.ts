@@ -54,6 +54,7 @@ export class DiagnosticProvider implements vscode.CodeActionProvider {
             minimumTokenLength: config.get<number>('minimumTokenLength', DEFAULT_CONFIG.minimumTokenLength),
             customPatterns: config.get<Array<{ name: string; regex: string }>>('customPatterns', DEFAULT_CONFIG.customPatterns),
             whitelistPatterns: config.get<string[]>('whitelistPatterns', DEFAULT_CONFIG.whitelistPatterns),
+            redactTestKeys: config.get<boolean>('redactTestKeys', DEFAULT_CONFIG.redactTestKeys),
         };
 
         const uriString = document.uri.toString();
