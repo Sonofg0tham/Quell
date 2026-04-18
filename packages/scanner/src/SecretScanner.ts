@@ -172,6 +172,10 @@ export class SecretScanner {
             regex: new RegExp(p.regex.source, p.regex.flags.includes('g') ? p.regex.flags : p.regex.flags + 'g'),
         }));
 
+    // Caches for compiled regexes to avoid recompilation overhead on every redact call
+    private static _whitelistCache = new WeakMap<string[], RegExp[]>();
+    private static _customPatternCache = new WeakMap<Array<{ name: string; regex: string }>, Array<{ name: string; regex: RegExp }>>();
+
     // ═════════════════════════════════════════
     //  Public API
     // ═════════════════════════════════════════
@@ -188,10 +192,14 @@ export class SecretScanner {
         const secrets = new Map<string, string>();
         const detectedTypes = new Set<string>();
 
-        // Build whitelist regex set
-        const whitelistRegexps = config.whitelistPatterns
-            .map((p) => { try { return new RegExp(p); } catch { return null; } })
-            .filter((r): r is RegExp => r !== null);
+        // Build whitelist regex set with caching
+        let whitelistRegexps = SecretScanner._whitelistCache.get(config.whitelistPatterns);
+        if (!whitelistRegexps) {
+            whitelistRegexps = config.whitelistPatterns
+                .map((p) => { try { return new RegExp(p); } catch { return null; } })
+                .filter((r): r is RegExp => r !== null);
+            SecretScanner._whitelistCache.set(config.whitelistPatterns, whitelistRegexps);
+        }
 
         const isWhitelisted = (value: string): boolean => {
             return whitelistRegexps.some((re) => re.test(value));
@@ -267,16 +275,24 @@ export class SecretScanner {
         }
 
         // ── Step 2: User-defined Custom Patterns ──
-        for (const custom of config.customPatterns) {
-            try {
-                const customRegex = new RegExp(custom.regex, 'g');
-                const matches = text.match(customRegex);
-                if (matches) {
-                    const uniqueMatches = [...new Set(matches)];
-                    uniqueMatches.forEach((match) => replaceSecret(match, custom.name));
+        let compiledCustoms = SecretScanner._customPatternCache.get(config.customPatterns);
+        if (!compiledCustoms) {
+            compiledCustoms = [];
+            for (const custom of config.customPatterns) {
+                try {
+                    compiledCustoms.push({ name: custom.name, regex: new RegExp(custom.regex, 'g') });
+                } catch {
+                    // Silently skip invalid user-defined patterns
                 }
-            } catch {
-                // Silently skip invalid user-defined patterns
+            }
+            SecretScanner._customPatternCache.set(config.customPatterns, compiledCustoms);
+        }
+
+        for (const custom of compiledCustoms) {
+            const matches = text.match(custom.regex);
+            if (matches) {
+                const uniqueMatches = [...new Set(matches)];
+                uniqueMatches.forEach((match) => replaceSecret(match, custom.name));
             }
         }
 
