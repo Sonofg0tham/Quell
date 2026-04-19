@@ -187,6 +187,8 @@ export class SecretScanner {
         let redactedText = text;
         const secrets = new Map<string, string>();
         const detectedTypes = new Set<string>();
+        // O(1) reverse lookup map to optimize placeholder lookup
+        const valueToPlaceholder = new Map<string, string>();
 
         // Build whitelist regex set
         const whitelistRegexps = config.whitelistPatterns
@@ -238,23 +240,18 @@ export class SecretScanner {
             if (isTestCredential(secretValue)) { return; }
 
             // Check if this exact secret value was already captured
-            let placeholder = '';
-            for (const [key, value] of secrets.entries()) {
-                if (value === secretValue) {
-                    placeholder = key;
-                    break;
-                }
-            }
+            let placeholder = valueToPlaceholder.get(secretValue) || '';
 
             if (!placeholder) {
                 const uuid = crypto.randomUUID().replace(/-/g, '').substring(0, 16);
                 placeholder = `{{SECRET_${uuid}}}`;
                 secrets.set(placeholder, secretValue);
+                valueToPlaceholder.set(secretValue, placeholder);
                 detectedTypes.add(typeName);
             }
 
-            // Use split/join for global replacement (safe for special regex chars in secrets)
-            redactedText = redactedText.split(secretValue).join(placeholder);
+            // Use replaceAll for faster global replacement (using a callback to avoid special replacement patterns)
+            redactedText = redactedText.replaceAll(secretValue, () => placeholder);
         };
 
         // ── Step 1: Built-in Regex Patterns ──
