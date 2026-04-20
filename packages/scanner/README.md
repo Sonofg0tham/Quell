@@ -19,14 +19,21 @@ npm install @quell/scanner
 import { SecretScanner, DEFAULT_CONFIG } from '@quell/scanner';
 
 const { redactedText, secrets, detectedTypes } = SecretScanner.redact(
-  'My key is AKIAIOSFODNN7EXAMPLE',
+  'Token: ghp_ABCDEFabcdef1234567890abcdef123456',
   DEFAULT_CONFIG
 );
 
-console.log(redactedText);        // "My key is {{SECRET_abc123...}}"
-console.log(detectedTypes);       // Set { "AWS Access Key ID" }
-console.log(secrets);             // Map { "{{SECRET_abc123...}}" => "AKIAIOSFODNN7EXAMPLE" }
+console.log(redactedText);
+// "Token: {{SECRET_a1b2c3d4e5f6a1b2}}"
+
+console.log(detectedTypes);
+// Set { "GitHub Personal Access Token" }
+
+console.log(secrets);
+// Map { "{{SECRET_a1b2c3d4e5f6a1b2}}" => "ghp_ABCDEFabcdef1234567890abcdef123456" }
 ```
+
+> **Note:** Placeholders use 16 hex characters (`{{SECRET_[a-f0-9]{16}}}`), giving 2^64 possible values for collision resistance across large vaults.
 
 ## Configuration
 
@@ -40,10 +47,21 @@ const config: ScannerConfig = {
   customPatterns: [
     { name: 'Internal API Key', regex: 'int_[a-f0-9]{32}' },
   ],
-  whitelistPatterns: ['AKIAIOSFODNN7EXAMPLE'],
+  whitelistPatterns: [],
+  redactTestKeys: false,
 };
 
 SecretScanner.redact(text, config);
+```
+
+### `redactTestKeys`
+
+By default (`false`), officially-published test/demo credentials (e.g. `AKIAIOSFODNN7EXAMPLE`, `sk_test_...`) are left alone. These appear in READMEs, tutorials, and documentation and are intentionally safe.
+
+Set to `true` to treat them like any other secret:
+
+```ts
+SecretScanner.redact(text, { ...DEFAULT_CONFIG, redactTestKeys: true });
 ```
 
 ## Status
