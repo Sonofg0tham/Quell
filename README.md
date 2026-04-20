@@ -7,11 +7,9 @@
 
 > 100% offline. Zero network calls. Zero telemetry. Your secrets never leave your machine.
 
-<!-- Screenshots — drop PNGs into assets/ and uncomment these lines
 ![Quell sidebar dashboard](assets/screenshot-sidebar.png)
 ![Inline diagnostics and Quick Fix](assets/screenshot-diagnostics.png)
 ![Before and after redaction](assets/screenshot-redaction.png)
--->
 
 ---
 
