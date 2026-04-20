@@ -2,68 +2,57 @@
 
 Living tracker of where Quell is, what's landed, and what's next. Update after every session that changes state. Sits alongside `POSITIONING.md` (strategy) and `FIX_PROMPTS/` (concrete next actions).
 
-*Last updated: 2026-04-17 (round 4 complete — 10 commits landed, pushed to main)*
+*Last updated: 2026-04-20 (round 5 landed, screenshot stubs in place, publish deferred to round 6)*
 
 ## Snapshot
 
 - **Repo**: `C:\\Users\\craig\\Github Repos\\Quell`, single checkout on `main`
 - **Publisher**: `Sonofg0tham`
-- **Version on Marketplace**: v2.4.0 (v2.5.0 built and ready — awaiting .vsix publish in round 5)
-- **Licence**: MIT (stays MIT for the free tier)
+- **Version in repo**: v2.5.0 (marketplace still shows v2.4.0 — VSIX publish pending round 5)
+- **Licence**: MIT
 - **Adoption (as of 2026-04-09)**: OpenVSX 484 downloads / 7 installs, VSCode Marketplace 65 acquisitions in last 30 days
-- **Strategic direction**: keep generous free tier, extract `SecretScanner.ts` into `@quell/scanner` package to unlock CLI, GitHub Action, and monetisation surfaces
+- **Tests**: 60/60 passing
+- **Working tree**: clean, up to date with origin/main
 
 ## Workflow rules for this project
 
-- Craig is a vibe coder. Sandbox session (Cowork) does the code edits directly; Claude Code on Craig's machine handles git plumbing (add/commit/push)
-- No more prompt docs by default. Sandbox makes the recommendations, applies the edits, hands a short git plan back to Claude Code
-- Sandbox cannot push (security feature, consent-gated). Sandbox also cannot delete files on the mounted Windows filesystem, so file moves need `git rm` on the old copies via Claude Code
-- Work from the single `main` checkout. The `claude/peaceful-dirac` worktree has been pruned
-- Known sandbox gotcha: the Write tool doesn't truncate files on the mount - when overwriting a smaller-content file, null bytes get appended. Fix with a bash `python3` rewrite when it happens
+- Craig is a vibe coder. Cowork session (Sonnet) reads the codebase, identifies improvements, writes comprehensive prompt docs Craig pastes into Claude Code. Claude Code does all edits, compile/test verification, commit, and push. No sandbox edits unless Craig specifically requests them.
+- Sandbox cannot push. Sandbox cannot delete files on the mounted Windows filesystem.
+- Work from the single `main` checkout. No worktrees.
+- Jules agent is active on the repo and may land PRs between sessions — always check `git log` first.
 
 ## What's landed
 
 ### Commit `1afe650` - Supabase test cases
-Added missing test cases for Supabase publishable and secret key patterns.
-
-### Commit `a655d49` - Round 1 fixes
-Correctness, hygiene, false-positive reduction:
-- Removed broken Segment Write Key pattern (was catching Stripe keys)
-- Removed redundant Google Gemini pattern (subset of Google API Key)
-- Removed dead code in entropy scan (unreachable camelCase/PascalCase branch)
-- Fixed `confirmBeforeRedact` default inconsistency between schema and code
-- Skip files >1MB in `onWillSaveTextDocument` to avoid blocking saves
-- Filter obvious placeholder passwords (changeme, hunter2, etc.) from `Password`/`Token in Assignment` matches
-- Removed committed `.vsix` build artefacts and `pnpm-lock.yaml`
-- Documented `Ctrl+Shift+V` rebinding in README
-
-Compile clean, 58/58 tests passing.
-
-### Round 2a - Planning doc / tidy commit
-Committed `.gitattributes`, `POSITIONING.md`, `PROJECT_STATUS.md`, the `FIX_PROMPTS/` directory, and the `.gitignore` update.
-
-### Commit `3828ca6` - Round 2b: scanner extraction
-Moved `SecretScanner.ts` and its tests into `packages/scanner/` as `@quell/scanner` v0.1.0 (not yet published to npm). History preserved, standalone build and root build both work. Compile clean, 58/58 tests passing.
-
-### Round 3 - 4 commits landed (`f77977a`..`0f1fc26`)
-- `f77977a` — CodeQL CI + contribution scaffolding
-- `1b626e6` — UUID placeholder 12→16 hex chars
-- `cd028a5` — quell.clearVault command
-- `0f1fc26` — quell.redactTestKeys setting (60/60 tests)
-
-### Round 4 - 6 commits landed (`a956e69`..`d3aa1e2`)
-- `a956e69` — Fix demo: GitHub PAT + PostgreSQL URI + OpenAI key (fires at default settings, no push-protection false positives)
-- `aa94bd2` — v2.5.0 bump, CHANGELOG entry, README UUID example updated to 16 chars
-- `74d1427` — README: redactTestKeys row in config table, Clear Vault row in commands table
-- `12021e3` — Extract getConfig() to configHelper.ts (no more config duplication)
-- `5a3fcf3` — publishConfig added to @quell/scanner package.json (public npm scoped publish)
-- `d3aa1e2` — .Jules/ renamed to .jules/ (case convention, R100 renames)
+### Commit `a655d49` - Round 1: correctness, hygiene, false-positive reduction (58/58)
+### Round 2a - Planning docs tidy commit
+### Commit `3828ca6` - Round 2b: scanner extraction to packages/scanner/ (@quell/scanner v0.1.0, not yet published)
+### Commit `f77977a` - Round 3a: CodeQL CI + CONTRIBUTING + issue templates
+### Commit `1b626e6` - Round 3b: UUID 12→16 bump
+### Commit `cd028a5` - Round 3c: quell.clearVault command (globalState vault index)
+### Commit `0f1fc26` - Round 3d: quell.redactTestKeys setting (60/60, 2 new tests)
+### Commit `a956e69` - Round 4a: Fix broken demo (replaced AKIA key with GitHub PAT + PostgreSQL + OpenAI)
+### Commit `aa94bd2` - Round 4b: v2.5.0 bump, CHANGELOG, fix UUID length in README
+### Commit `74d1427` - Round 4c: README — clearVault and redactTestKeys added to docs tables
+### Commit `12021e3` - Round 4d: Extract getConfig() to src/configHelper.ts
+### Commit `5a3fcf3` - Round 4e: publishConfig added to packages/scanner/package.json
+### Commit `d3aa1e2` - Round 4f: .Jules/ renamed to .jules/
+### Commit `879ed58` - Jules: webview RCE fix (command allowlist), SecretScanner O(1) perf, a11y, @types/vscode bump
+### Round 5 (8 commits) — CHANGELOG update, hover tooltip fix, toggleAutoSanitize command registration, Clear Vault sidebar button, vaultIndexAdd O(1) optimisation, scanner README rewrite, screenshot stubs, PROJECT_STATUS update
 
 ## What's next
 
-### Round 5 - Screenshots, publish, marketplace
+### Round 6 — Publish + real screenshots
 
-1. **Screenshots** (3 PNGs): sidebar dashboard, inline diagnostics, before/after redaction. Save as `assets/screenshot-sidebar.png`, `assets/screenshot-diagnostics.png`, `assets/screenshot-redaction.png`. Uncomment the three commented-out lines in README.
-2. **Publish `@quell/scanner` to npm**: run `npm run build` inside `packages/scanner/`, then `npm publish` (account must have @quell scope, `publishConfig` is already set for public access).
-3. **Build and publish `.vsix`**: `npx vsce package` in root, then `npx vsce publish` or upload via Marketplace UI. Bump marketplace version to v2.5.0.
-4. Product Hunt / HN post.
+Manual steps (not git commits):
+- Take 3 real screenshots: sidebar dashboard, inline diagnostics, redaction before/after. Replace PNG stubs in `assets/`.
+- `cd packages/scanner && npm run build && npm publish` (publishConfig already in place, access: public)
+- `npx vsce package` then upload to VS Code Marketplace (v2.4.0 → v2.5.0)
+- `npx ovsx publish` to update OpenVSX
+- Delete old `quell-2.4.0.vsix` from repo root (it's gitignored)
+
+Then post-launch:
+- Launch post (Product Hunt / HN / LinkedIn/Twitter)
+- GitHub Action for automated VSIX release on tag push (`.github/workflows/release.yml`)
+- Monitor adoption numbers, respond to issues
+- Explore monetisation surfaces: team pattern packs, CI integration (uses @quell/scanner npm package)
