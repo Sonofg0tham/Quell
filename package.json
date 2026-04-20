@@ -15,7 +15,7 @@
         "url": "https://github.com/sonofg0tham/Quell.git"
     },
     "engines": {
-        "vscode": "^1.85.0"
+        "vscode": "^1.107.0"
     },
     "categories": [
         "Chat",
@@ -225,8 +225,8 @@
                 "quell.entropyThreshold": {
                     "type": "number",
                     "default": 4.5,
-                    "minimum": 2.0,
-                    "maximum": 7.0,
+                    "minimum": 2,
+                    "maximum": 7,
                     "description": "Minimum Shannon Entropy to flag a token (higher = fewer false positives, lower = more aggressive). Typical API keys score 4.5–6.0.",
                     "order": 2
                 },
@@ -306,35 +306,57 @@
                         "id": "quell.welcome",
                         "title": "What is Quell?",
                         "description": "Quell sits between you and AI tools (Copilot, Cursor, Windsurf). When you copy code or paste prompts, it strips out API keys, passwords, and tokens — replacing them with safe placeholders.\n\nYour real secrets never leave your machine. They're stored in your OS Keychain (Windows Credential Manager / macOS Keychain). No telemetry, no network calls, fully offline.",
-                        "media": { "svg": "assets/quell-sidebar.svg", "altText": "Quell shield" },
+                        "media": {
+                            "svg": "assets/quell-sidebar.svg",
+                            "altText": "Quell shield"
+                        },
                         "completionEvents": []
                     },
                     {
                         "id": "quell.demo",
                         "title": "See it catch a secret",
                         "description": "Click below to open a demo file with fake GitHub, database, and OpenAI credentials. Watch the yellow squiggles appear — then use the Quick Fix lightbulb (or Ctrl+.) to redact them.\n\n[Open demo file](command:quell.openDemo)",
-                        "media": { "svg": "assets/quell-sidebar.svg", "altText": "Quell demo" },
-                        "completionEvents": ["onCommand:quell.redactActiveFile"]
+                        "media": {
+                            "svg": "assets/quell-sidebar.svg",
+                            "altText": "Quell demo"
+                        },
+                        "completionEvents": [
+                            "onCommand:quell.redactActiveFile"
+                        ]
                     },
                     {
                         "id": "quell.shortcuts",
                         "title": "The two shortcuts to know",
                         "description": "**Ctrl+Shift+C** — Copy Redacted: copies your selection with secrets stripped. Safe to paste anywhere.\n\n**Ctrl+Shift+V** — Sanitised Paste: pastes from clipboard with secrets automatically removed.\n\n[Try Copy Redacted now](command:quell.copyRedacted)",
-                        "media": { "svg": "assets/quell-sidebar.svg", "altText": "Shortcuts" },
-                        "completionEvents": ["onCommand:quell.copyRedacted", "onCommand:quell.sanitizedPaste"]
+                        "media": {
+                            "svg": "assets/quell-sidebar.svg",
+                            "altText": "Shortcuts"
+                        },
+                        "completionEvents": [
+                            "onCommand:quell.copyRedacted",
+                            "onCommand:quell.sanitizedPaste"
+                        ]
                     },
                     {
                         "id": "quell.aiShield",
                         "title": "Block AI from indexing your secrets",
                         "description": "Quell can add your secret files (like .env) to your AI IDE's ignore list — so tools like Cursor or Windsurf never index them in the first place.\n\n[Enable AI Shield](command:quell.enableAiShield)",
-                        "media": { "svg": "assets/quell-sidebar.svg", "altText": "AI Shield" },
-                        "completionEvents": ["onCommand:quell.enableAiShield"]
+                        "media": {
+                            "svg": "assets/quell-sidebar.svg",
+                            "altText": "AI Shield"
+                        },
+                        "completionEvents": [
+                            "onCommand:quell.enableAiShield"
+                        ]
                     },
                     {
                         "id": "quell.done",
                         "title": "You're protected",
                         "description": "Quell is running silently in the background. Check the sidebar dashboard any time to see session stats, findings, and settings.\n\n[Open Quell Dashboard](command:workbench.view.extension.quell-sidebar)",
-                        "media": { "svg": "assets/quell-sidebar.svg", "altText": "Protected" },
+                        "media": {
+                            "svg": "assets/quell-sidebar.svg",
+                            "altText": "Protected"
+                        },
                         "completionEvents": []
                     }
                 ]
@@ -348,9 +370,8 @@
         "test": "tsc -p ./tsconfig.test.json && node out/packages/scanner/src/test/SecretScanner.test.js"
     },
     "devDependencies": {
-        "@types/vscode": "^1.115.0",
         "@types/node": "20.x",
+        "@types/vscode": "^1.107.0",
         "typescript": "^5.3.3"
-    },
-    "dependencies": {}
+    }
 }
