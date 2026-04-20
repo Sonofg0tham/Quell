@@ -2,7 +2,7 @@
     "name": "quell",
     "displayName": "Quell",
     "description": "Prevent secret leakage in AI chats — intercepts prompts, redacts API keys/tokens/passwords, and stores them securely in your OS Keychain. Zero network calls, fully offline.",
-    "version": "2.5.0",
+    "version": "2.5.1",
     "publisher": "Sonofg0tham",
     "icon": "assets/icon.png",
     "galleryBanner": {

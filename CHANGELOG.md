@@ -2,6 +2,15 @@
 
 All notable changes to Quell will be documented in this file.
 
+## [2.5.1] - 2026-04-20
+
+### 🔧 Publish Fix
+- **VSIX test file exclusion** — `.vscodeignore` now excludes compiled test files
+  (`out/packages/scanner/src/test/**`, `packages/scanner/dist-test/**`,
+  `packages/scanner/src/test/**`). The VS Code Marketplace secret scanner was
+  flagging test fixture strings in compiled test output as real secrets. Test files
+  have no place in a published extension.
+
 ## [2.5.0] - 2026-04-17
 
 ### 🛡️ Vault Management

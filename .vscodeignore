@@ -12,4 +12,7 @@ tsconfig.test.json
 **/*.map
 *.vsix
 out/test/**
+out/packages/scanner/src/test/**
+packages/scanner/dist-test/**
+packages/scanner/src/test/**
 playground/**
