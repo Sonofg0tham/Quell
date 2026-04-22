@@ -255,6 +255,51 @@ test('detects Redis Connection URI', () => {
 });
 
 
+// ── Connection URI edge cases ────────────────────────────────
+console.log('\n🗄️  Connection URI edge cases:');
+
+test('PostgreSQL URI counts as exactly one secret', () => {
+    const uri = 'postgres://admin:hunter2@db.example.com:5432/myapp';
+    const result = SecretScanner.redact(uri, DEFAULT_CONFIG);
+    assert.strictEqual(
+        result.secrets.size,
+        1,
+        `Expected exactly 1 secret for a plain PostgreSQL URI but got ${result.secrets.size}: [${Array.from(result.detectedTypes).join(', ')}]`
+    );
+    assert.ok(result.detectedTypes.has('PostgreSQL Connection URI'), 'Expected type "PostgreSQL Connection URI"');
+});
+
+test('PostgreSQL URI with high-entropy password still counts as one secret', () => {
+    // Use a genuinely high-entropy password (>4.5 bits) to ensure entropy pass does not
+    // double-count the password after the URI has already been redacted.
+    const uri = 'postgres://admin:xK9$mP2@wQ8nR5vL@db.example.com/prod';
+    const result = SecretScanner.redact(uri, DEFAULT_CONFIG);
+    assert.strictEqual(
+        result.secrets.size,
+        1,
+        `Expected exactly 1 secret even with high-entropy password. Got ${result.secrets.size}: [${Array.from(result.detectedTypes).join(', ')}]`
+    );
+});
+
+test('Separate PASSWORD assignment alongside URI counts as one secret (same value, deduped)', () => {
+    // If the password appears both in the URI AND as a standalone DB_PASSWORD= line,
+    // that is two distinct sensitive values and should count as two.
+    const input = [
+        'DATABASE_URL=postgres://admin:hunter2@db.example.com/myapp',
+        "DB_PASSWORD='hunter2'",
+    ].join('\n');
+    const result = SecretScanner.redact(input, DEFAULT_CONFIG);
+    // hunter2 appears in both contexts but is the SAME string — valueToPlaceholder dedup
+    // means it maps to a single placeholder. Total unique secrets = 1 (the URI, which
+    // already embeds the password string).
+    assert.strictEqual(
+        result.secrets.size,
+        1,
+        `Expected 1 unique secret (same value in URI and assignment). Got ${result.secrets.size}: [${Array.from(result.detectedTypes).join(', ')}]`
+    );
+});
+
+
 // ── Hosting/Deployment ──────────────
 console.log('\n🚀 Hosting & Deployment Patterns:');
 
