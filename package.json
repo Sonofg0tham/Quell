@@ -2,7 +2,7 @@
     "name": "quell",
     "displayName": "Quell",
     "description": "Stop API keys and passwords leaking into AI tools. Quell redacts secrets before they reach Copilot, Cursor, or Windsurf — 100% offline, zero telemetry.",
-    "version": "2.5.1",
+    "version": "2.6.0",
     "publisher": "Sonofg0tham",
     "icon": "assets/icon.png",
     "galleryBanner": {

@@ -2,6 +2,23 @@
 
 All notable changes to Quell will be documented in this file.
 
+## [2.6.0] - 2026-04-22
+
+### 🔍 New Detection Patterns
+- **PlanetScale API Token** (`pscale_tkn_...`) — database branching platform
+- **Resend API Key** (`re_...`) — transactional email API
+- **Linear API Key** (`lin_api_...`) — project management API
+
+### 🧪 Scanner Correctness
+- **PostgreSQL URI double-detection regression test** — added explicit tests confirming a
+  PostgreSQL connection URI is always counted as a single secret, even when the embedded
+  password is high-entropy. Guards against future regressions in the detection pipeline.
+
+### 📝 Notes
+- Lemon Squeezy keys are JWTs and were already covered by the JSON Web Token pattern.
+- Mistral, Loops, and Neon keys have no distinctive token prefix; they are caught by the
+  Shannon entropy pass (threshold 4.5 bits).
+
 ## [2.5.1] - 2026-04-20
 
 ### 🔧 Publish Fix
