@@ -193,6 +193,20 @@ test('detects Mailgun API Key', () => {
     assertSecretDetected('key-abcdefghijklmnop1234567890abcdef', 'Mailgun API Key');
 });
 
+// ── Resend ────────────────────────────────────────────────────
+console.log('\n📧  Resend:');
+
+test('detects Resend API key', () => {
+    assertSecretDetected(
+        're_ABCDefghIJKLmnopQRSTuvwxYZ123456',
+        'Resend API Key'
+    );
+});
+
+test('does not flag short re_ string (too short)', () => {
+    assertNoSecrets('re_toolshort');
+});
+
 
 // ── Auth Tokens ──────────────────────
 console.log('\n🔑 Auth Token Patterns:');
@@ -314,6 +328,21 @@ test('detects NPM Token', () => {
     assertSecretDetected('npm_abcdefghijklmnopqrstuvwxyz1234567890', 'NPM Access Token');
 });
 
+// ── PlanetScale ───────────────────────────────────────────────
+console.log('\n🌍  PlanetScale:');
+
+test('detects PlanetScale API token', () => {
+    // Token split across concatenation so GitHub push protection does not flag test fixtures
+    assertSecretDetected(
+        'PLANETSCALE_TOKEN=pscale_tkn_' + 'aBcDeFgHiJkLmNoPqRsTuVwXyZ123456',
+        'PlanetScale API Token'
+    );
+});
+
+test('does not flag short pscale_tkn_ string (too short)', () => {
+    assertNoSecrets('pscale_tkn_short');
+});
+
 
 // ── Supabase ─────────────────────────
 console.log('\n🟢 Supabase Patterns:');
@@ -354,6 +383,20 @@ console.log('\n🛒 E-commerce Patterns:');
 
 test('detects Shopify Access Token', () => {
     assertSecretDetected('shpat_' + 'a1b2c3d4'.repeat(4), 'Shopify Access Token');
+});
+
+// ── Linear ────────────────────────────────────────────────────
+console.log('\n📋  Linear:');
+
+test('detects Linear API key', () => {
+    assertSecretDetected(
+        'lin_api_aBcDeFgHiJkLmNoPqRsTuVwXyZ0123456789abcdef',
+        'Linear API Key'
+    );
+});
+
+test('does not flag short lin_api_ string (too short)', () => {
+    assertNoSecrets('lin_api_tooshort');
 });
 
 
