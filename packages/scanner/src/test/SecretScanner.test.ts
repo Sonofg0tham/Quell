@@ -118,6 +118,44 @@ test('detects Hugging Face Token', () => {
     assertSecretDetected('hf_abcdefghijklmnopqrstuvwxyz12345678', 'Hugging Face Token');
 });
 
+test('detects OpenRouter API Key', () => {
+    assertSecretDetected(
+        'OPENROUTER_API_KEY=sk-or-v1-0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef',
+        'OpenRouter API Key'
+    );
+});
+
+test('detects Groq API Key', () => {
+    assertSecretDetected(
+        'GROQ_API_KEY=gsk_ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz12',
+        'Groq API Key'
+    );
+});
+
+test('detects Perplexity API Key', () => {
+    assertSecretDetected(
+        'PERPLEXITY_API_KEY=pplx-ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwx',
+        'Perplexity API Key'
+    );
+});
+
+test('detects xAI API Key', () => {
+    assertSecretDetected(
+        'XAI_API_KEY=xai-ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789ABCDEFGHIJKLMNOPQRSTUVWX',
+        'xAI API Key'
+    );
+});
+
+test('detects LangSmith API Key', () => {
+    // Assembled at runtime so GitHub push-protection doesn't flag the literal fixture.
+    const sample = 'LANGSMITH_API_KEY=' + ['lsv2', 'pt', '0'.repeat(32), '0'.repeat(10)].join('_');
+    assertSecretDetected(sample, 'LangSmith API Key');
+});
+
+test('does not flag short sk-or-v1- prefix', () => {
+    assertNoSecrets('sk-or-v1-tooshort');
+});
+
 
 // ── Payment Providers ────────────────
 console.log('\n💳 Payment Provider Patterns:');
