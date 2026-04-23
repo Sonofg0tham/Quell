@@ -20,8 +20,14 @@ All notable changes to Quell will be documented in this file.
   in June 2024. OAuth service accounts are still covered by the existing Google pattern.
 
 ### 🎨 UI
-- **Activity-bar sidebar icon** redesigned as a shield silhouette using `currentColor`, so
-  it recolours with the VSCode theme instead of always rendering blue.
+- **Activity-bar sidebar icon** redesigned as a circle with a redaction-bar tail (the Quell
+  mark), using `currentColor` so it recolours with the VSCode theme instead of always
+  rendering blue.
+- **Marketplace icon** replaced — the 3D crystal render is gone. The new flat two-tone mark
+  uses Quell blue (`#60A5FA`) for the circle and a coral accent (`#F97316`) for the
+  redaction bar, matching the sidebar silhouette so both surfaces read as one product.
+- **`assets/icon.svg`** added as the vector master for the Marketplace PNG, so future size
+  variants and theme adjustments can be regenerated without losing quality.
 
 ## [2.6.0] - 2026-04-22
 
