@@ -1,6 +1,6 @@
 import * as vscode from 'vscode';
 import * as crypto from 'crypto';
-import { SecretScanner, ScannerConfig, DEFAULT_CONFIG } from '../packages/scanner/src';
+import { SecretScanner } from '../packages/scanner/src';
 import { EnvManager } from './EnvManager';
 import { Logger } from './Logger';
 import { StatusBar } from './StatusBar';
