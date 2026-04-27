@@ -2,13 +2,14 @@
 
 Living tracker of where Quell is, what's landed, and what's next. Update after every session that changes state. Sits alongside `POSITIONING.md` (strategy) and `FIX_PROMPTS/` (concrete next actions).
 
-*Last updated: 2026-04-23 (round 9 landed: v2.7.0 with 5 new AI-provider patterns, pattern hygiene, themed sidebar icon, 78/78 tests, ready to publish)*
+*Last updated: 2026-04-27 (round 11 landed: @sonofg0tham/quell-scanner v0.1.0 live on npm)*
 
 ## Snapshot
 
 - **Repo**: `C:\\Users\\craig\\Github Repos\\Quell`, single checkout on `main`
 - **Publisher**: `Sonofg0tham`
-- **Version in repo**: v2.7.0 (not yet published — v2.5.1 is live on marketplace; v2.6.0 exists as CHANGELOG entry only, superseded by v2.7.0)
+- **Extension**: v2.7.0 live on Marketplace and OpenVSX
+- **Scanner npm package**: [`@sonofg0tham/quell-scanner@0.1.0`](https://www.npmjs.com/package/@sonofg0tham/quell-scanner) live on npm (zero runtime deps, 46.7 kB unpacked)
 - **Licence**: MIT
 - **Adoption (as of 2026-04-09)**: OpenVSX 484 downloads / 7 installs, VSCode Marketplace 65 acquisitions in last 30 days
 - **Tests**: 78/78 passing
@@ -54,21 +55,15 @@ With `.github/workflows/release.yml` in place, future versions work like this:
 ### Round 7 (5 commits) — v2.5.1 .vscodeignore fix, GitHub Actions release workflow, category 'Education' + preview:false, improved marketplace description, PROJECT_STATUS update
 ### Round 8 (5 commits) — PostgreSQL double-detection regression tests, PlanetScale + Resend + Linear patterns, v2.6.0 bump (69/69 tests)
 ### Round 9 (7 commits) — removed Heroku + legacy Firebase FCM, tightened Cohere/Mailgun/Okta, added OpenRouter + Groq + Perplexity + xAI + LangSmith patterns, redesigned sidebar icon as themeable shield, v2.7.0 bump (78/78 tests)
+### Round 10 (3 commits) — final Q-and-redaction-bar mark replaced shield sidebar SVG, two-tone `assets/icon.svg` master added, regenerated `assets/icon.png`, `assets/hero-banner.png` removed
+### Round 10b (1 commit) — CHANGELOG v2.7.0 UI section rewritten to describe the final mark, then v2.7.0 tagged
+### Post-tag fix (1 commit) — `FIX_PROMPTS/` removed from tracking + ignored in git/VSIX, `permissions: contents: write` added to release.yml (previous v2.7.0 workflow run 403'd because `GITHUB_TOKEN` couldn't create a release); v2.7.0 release built locally and attached manually
+### Round 11 (3 commits) — scanner package renamed twice for npm scope (final: `@sonofg0tham/quell-scanner` after Craig created a new npm account matching his GitHub handle), then published to npm with 2FA enabled
 
 ## What's next
 
-### Publish v2.7.0
-
-1. Tag the release: `git tag v2.7.0 && git push origin v2.7.0`
-2. GitHub Actions builds `quell-2.7.0.vsix` and attaches it to a GitHub Release automatically
-3. Download VSIX from the GitHub Release page
-4. Upload to VS Code Marketplace (manual)
-5. `npx ovsx publish quell-2.7.0.vsix -p <token>` for OpenVSX
-
-Note: v2.6.0 was never tagged/published — v2.7.0 supersedes it. CHANGELOG retains the v2.6.0 entry for historical record.
-
 ### Pending
-- **npm (@sonofg0tham/quell-scanner)** — `cd packages/scanner && npm run build && npm publish` (needs `npm login --auth-type=web` as Sonofg0tham first). Verify at https://www.npmjs.com/package/@sonofg0tham/quell-scanner
+- **Tag scanner release**: `git tag scanner-v0.1.0 && git push origin scanner-v0.1.0` (distinguishes from extension's v2.7.0 tag)
 - PostgreSQL double-detection confirmed as non-issue (same-value dedup works correctly)
 
 ### Post-launch
