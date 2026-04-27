@@ -2,7 +2,7 @@
 
 Living tracker of where Quell is, what's landed, and what's next. Update after every session that changes state. Sits alongside `POSITIONING.md` (strategy) and `FIX_PROMPTS/` (concrete next actions).
 
-*Last updated: 2026-04-27 (round 11 landed: @sonofg0tham/quell-scanner v0.1.0 live on npm)*
+*Last updated: 2026-04-27 (round 12 landed: Claude Code plugin scaffold + UserPromptSubmit hook with smoke tests; fourth Quell surface in repo)*
 
 ## Snapshot
 
@@ -10,9 +10,10 @@ Living tracker of where Quell is, what's landed, and what's next. Update after e
 - **Publisher**: `Sonofg0tham`
 - **Extension**: v2.7.0 live on Marketplace and OpenVSX
 - **Scanner npm package**: [`@sonofg0tham/quell-scanner@0.1.0`](https://www.npmjs.com/package/@sonofg0tham/quell-scanner) live on npm (zero runtime deps, 46.7 kB unpacked)
+- **Claude Code plugin**: `@sonofg0tham/quell-claude@0.1.0` in repo at `packages/claude-plugin/` (not yet distributed via marketplace; install locally via `claude --plugin-dir`)
 - **Licence**: MIT
 - **Adoption (as of 2026-04-09)**: OpenVSX 484 downloads / 7 installs, VSCode Marketplace 65 acquisitions in last 30 days
-- **Tests**: 78/78 passing
+- **Tests**: 78/78 scanner + 3/3 plugin hook = 81/81 passing
 - **Working tree**: clean, up to date with origin/main
 
 ## Workflow rules for this project
@@ -59,14 +60,22 @@ With `.github/workflows/release.yml` in place, future versions work like this:
 ### Round 10b (1 commit) — CHANGELOG v2.7.0 UI section rewritten to describe the final mark, then v2.7.0 tagged
 ### Post-tag fix (1 commit) — `FIX_PROMPTS/` removed from tracking + ignored in git/VSIX, `permissions: contents: write` added to release.yml (previous v2.7.0 workflow run 403'd because `GITHUB_TOKEN` couldn't create a release); v2.7.0 release built locally and attached manually
 ### Round 11 (3 commits) — scanner package renamed twice for npm scope (final: `@sonofg0tham/quell-scanner` after Craig created a new npm account matching his GitHub handle), then published to npm with 2FA enabled
+### Round 12 (3 commits) — Claude Code plugin scaffold at `packages/claude-plugin/`: `UserPromptSubmit` hook that BLOCKS prompts containing secrets (exit 2 + redacted-version stderr) so the original never reaches the model; bundled compiled scanner (no `npm install` step required); fail-open contract on bad stdin, missing scanner, scanner throws, empty prompts; 5s config timeout / 4s script safety net; 3/3 smoke tests covering clean passthrough, regex-path block (asserts redacted output AND that the original secret value is NOT in stderr), fail-open on malformed stdin. Misplaced first commit landed on `fix/code-scanning-alerts` and was cherry-picked back to `main`; CodeQL fix branch left untouched
 
 ## What's next
 
-### Pending
-- **Tag scanner release**: `git tag scanner-v0.1.0 && git push origin scanner-v0.1.0` (distinguishes from extension's v2.7.0 tag)
+### Plugin v0.2 — vault + `/quell-restore` (natural next round)
+The block-and-resubmit UX from v0.1.0 drops the original secret values on the floor.
+v0.2 adds persistent storage (likely `${CLAUDE_PLUGIN_DATA}` keyed by placeholder)
+and a slash command that swaps real values back when Claude's response references
+them. This is the convenience layer that makes the safety win usable day-to-day.
+
+### Pending — small backlog
+- Wire `node packages/claude-plugin/test/redact.test.js` into the existing CI workflow so plugin regressions break CI alongside scanner regressions (after a week of dogfooding to confirm no flakes)
+- Dogfood the plugin in Craig's own Claude Code sessions for a week before any wider distribution
 - PostgreSQL double-detection confirmed as non-issue (same-value dedup works correctly)
 
 ### Post-launch
-- Launch post (Product Hunt / HN / LinkedIn/Twitter)
+- Launch post (Product Hunt / HN / LinkedIn/Twitter) — covers all four surfaces: Marketplace extension, OpenVSX extension, npm scanner, Claude Code plugin. Gated on the dogfood week.
 - Monitor adoption numbers, respond to issues
 - Explore monetisation surfaces: team pattern packs, CI integration (uses @sonofg0tham/quell-scanner npm package)
