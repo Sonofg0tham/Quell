@@ -64,7 +64,7 @@ Features that provide ongoing value or target teams:
 
 ### Quell CLI / GitHub Action (Free for public repos, £5/mo per private repo)
 
-A standalone binary built from the extracted `@sonofg0tham/quell-scanner` package. Same engine, different distribution.
+A standalone binary built from the extracted `@sonofgotham/quell-scanner` package. Same engine, different distribution.
 
 - `quell scan` on any directory
 - GitHub Action: `uses: sonofg0tham/quell-action@v1` in a workflow
@@ -89,10 +89,10 @@ Defer until Pro has paying users.
 - Add CONTRIBUTING.md and issue templates
 
 ### Weeks 3-4: Extract the engine
-- Create `@sonofg0tham/quell-scanner` npm package from `src/SecretScanner.ts`
+- Create `@sonofgotham/quell-scanner` npm package from `src/SecretScanner.ts`
 - Ship v1.0 to npm
 - Refactor extension to depend on it
-- Build CLI wrapper: `npx @sonofg0tham/quell-scanner ./src`
+- Build CLI wrapper: `npx @sonofgotham/quell-scanner ./src`
 
 ### Weeks 5-6: CI surface
 - Build GitHub Action using the npm package
@@ -123,7 +123,7 @@ Defer until Pro has paying users.
 
 - 2,000+ total installs across Marketplace + OpenVSX (from ~550 today)
 - 100+ GitHub stars (check current baseline first)
-- 50+ npm weekly downloads of `@sonofg0tham/quell-scanner`
+- 50+ npm weekly downloads of `@sonofgotham/quell-scanner`
 - 5+ GitHub repos using the Action
 - 1 paying Pro user (proof of concept, not revenue target)
 - A launch post with 50+ upvotes somewhere

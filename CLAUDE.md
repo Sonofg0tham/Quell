@@ -32,8 +32,8 @@ The repository contains two logical packages:
 
 | Location | Role |
 |----------|------|
-| `packages/scanner/` | `@sonofg0tham/quell-scanner` — the standalone, VSCode-free secret-detection engine. Publishable to npm as a separate artefact. Package-in-waiting (not yet published, consumed by the extension via relative import). |
-| `src/` | The VSCode extension itself. Consumes `@sonofg0tham/quell-scanner` via `../packages/scanner/src` today; will switch to the published npm name when it ships. |
+| `packages/scanner/` | `@sonofgotham/quell-scanner` — the standalone, VSCode-free secret-detection engine. Publishable to npm as a separate artefact. Package-in-waiting (not yet published, consumed by the extension via relative import). |
+| `src/` | The VSCode extension itself. Consumes `@sonofgotham/quell-scanner` via `../packages/scanner/src` today; will switch to the published npm name when it ships. |
 
 All extension-specific subsystems stay in `src/` because they depend on VSCode APIs.
 

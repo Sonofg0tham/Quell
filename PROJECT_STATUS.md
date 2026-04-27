@@ -68,10 +68,10 @@ With `.github/workflows/release.yml` in place, future versions work like this:
 Note: v2.6.0 was never tagged/published — v2.7.0 supersedes it. CHANGELOG retains the v2.6.0 entry for historical record.
 
 ### Pending
-- **npm (@sonofg0tham/quell-scanner)** — `cd packages/scanner && npm run build && npm publish` (needs `npm login --auth-type=web` as Sonofg0tham first). Verify at https://www.npmjs.com/package/@sonofg0tham/quell-scanner
+- **npm (@sonofgotham/quell-scanner)** — `cd packages/scanner && npm run build && npm publish` (needs `npm login --auth-type=web` as Sonofg0tham first). Verify at https://www.npmjs.com/package/@sonofgotham/quell-scanner
 - PostgreSQL double-detection confirmed as non-issue (same-value dedup works correctly)
 
 ### Post-launch
 - Launch post (Product Hunt / HN / LinkedIn/Twitter)
 - Monitor adoption numbers, respond to issues
-- Explore monetisation surfaces: team pattern packs, CI integration (uses @sonofg0tham/quell-scanner npm package)
+- Explore monetisation surfaces: team pattern packs, CI integration (uses @sonofgotham/quell-scanner npm package)
