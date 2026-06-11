@@ -8,6 +8,7 @@ import * as vscode from 'vscode';
 export class DecorationProvider {
     private static placeholderDecorationType: vscode.TextEditorDecorationType;
     private static disposables: vscode.Disposable[] = [];
+    private static timeout: NodeJS.Timeout | undefined;
 
     public static init(context: vscode.ExtensionContext): void {
         this.placeholderDecorationType = vscode.window.createTextEditorDecorationType({
@@ -33,7 +34,8 @@ export class DecorationProvider {
             vscode.workspace.onDidChangeTextDocument((event) => {
                 const editor = vscode.window.activeTextEditor;
                 if (editor && event.document === editor.document) {
-                    this.updateDecorations(editor);
+                    if (this.timeout) { clearTimeout(this.timeout); }
+                    this.timeout = setTimeout(() => this.updateDecorations(editor), 300);
                 }
             })
         );
@@ -64,7 +66,7 @@ export class DecorationProvider {
             const endPos = editor.document.positionAt(match.index + match[0].length);
 
             const hoverMsg = new vscode.MarkdownString();
-            hoverMsg.isTrusted = true;
+            hoverMsg.isTrusted = { enabledCommands: ['quell.restoreSecrets'] };
             hoverMsg.appendMarkdown('**🛡️ Quell Secure Placeholder**\n\n');
             hoverMsg.appendMarkdown('The real secret is stored in your OS Keychain.\n\n');
             hoverMsg.appendMarkdown('[Restore Secrets](command:quell.restoreSecrets "Restore all secrets in this file")');

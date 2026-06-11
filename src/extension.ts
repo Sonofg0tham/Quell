@@ -541,7 +541,7 @@ export function activate(context: vscode.ExtensionContext) {
             const range = document.getWordRangeAtPosition(position, /{{SECRET_[a-z0-9]+}}/);
             if (range) {
                 const md = new vscode.MarkdownString();
-                md.isTrusted = true;
+                md.isTrusted = { enabledCommands: ['quell.restoreSecrets'] };
                 md.supportHtml = true;
                 md.appendMarkdown('### 🛡️ Quell Secure Placeholder\n\n');
                 md.appendMarkdown('This value has been redacted and stored in your **OS Keychain**.\n\n');
