@@ -1,4 +1,5 @@
 import * as vscode from 'vscode';
+import * as crypto from 'crypto';
 import { SecretScanner } from '../packages/scanner/src';
 
 export class SidebarProvider implements vscode.WebviewViewProvider {
@@ -103,6 +104,7 @@ export class SidebarProvider implements vscode.WebviewViewProvider {
     }
 
     private getHtmlForWebview(): string {
+        const nonce = crypto.randomBytes(16).toString('base64');
         const config = vscode.workspace.getConfiguration('quell');
         const iconUri = this._view?.webview.asWebviewUri(
             vscode.Uri.joinPath(this._extensionUri, 'assets', 'icon.png')
@@ -175,9 +177,9 @@ export class SidebarProvider implements vscode.WebviewViewProvider {
         <head>
             <meta charset="UTF-8">
             <meta name="viewport" content="width=device-width, initial-scale=1.0">
-            <meta http-equiv="Content-Security-Policy" content="default-src 'none'; img-src ${this._view?.webview.cspSource} https: data:; style-src 'unsafe-inline' ${this._view?.webview.cspSource}; script-src 'unsafe-inline';">
+            <meta http-equiv="Content-Security-Policy" content="default-src 'none'; img-src ${this._view?.webview.cspSource} https: data:; style-src 'nonce-${nonce}' ${this._view?.webview.cspSource}; script-src 'nonce-${nonce}';">
             <title>Quell</title>
-            <style>
+            <style nonce="${nonce}">
                 @keyframes pulseGlow {
                     0%, 100% { box-shadow: 0 0 8px rgba(37,99,235,0.15); }
                     50% { box-shadow: 0 0 18px rgba(37,99,235,0.3), 0 0 40px rgba(37,99,235,0.08); }
@@ -840,7 +842,7 @@ export class SidebarProvider implements vscode.WebviewViewProvider {
                 </div>
 
             </div>
-            <script>const vscode = acquireVsCodeApi();</script>
+            <script nonce="${nonce}">const vscode = acquireVsCodeApi();</script>
         </body>
         </html>`;
     }
