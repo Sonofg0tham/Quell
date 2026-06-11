@@ -879,7 +879,7 @@ export function activate(context: vscode.ExtensionContext) {
             const doc = await vscode.workspace.openTextDocument(uri);
             if (doc.getText(range) !== secretValue) { return; }
 
-            const uuid = crypto.randomUUID().replace(/-/g, '').substring(0, 16);
+            const uuid = crypto.randomUUID().replace(/-/g, '');
             const placeholder = `{{SECRET_${uuid}}}`;
             await context.secrets.store(placeholder, secretValue);
             await vaultIndexAdd(context, placeholder);

@@ -605,7 +605,7 @@ test('does not leak the tail of a longer secret sharing a shorter secret prefix'
 test('placeholder format is correct', () => {
     const result = SecretScanner.redact('ghp_ABCDEFabcdef1234567890abcdef123456');
     const placeholder = Array.from(result.secrets.keys())[0];
-    assert.ok(/^{{SECRET_[a-z0-9]{16}}}$/.test(placeholder), `Placeholder "${placeholder}" does not match expected format`);
+    assert.ok(/^{{SECRET_[a-z0-9]{32}}}$/.test(placeholder), `Placeholder "${placeholder}" does not match expected format`);
 });
 
 test('redacted text contains placeholder, not original', () => {

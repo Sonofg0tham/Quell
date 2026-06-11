@@ -252,7 +252,7 @@ export class SecretScanner {
             let placeholder = valueToPlaceholder.get(secretValue) || '';
 
             if (!placeholder) {
-                const uuid = crypto.randomUUID().replace(/-/g, '').substring(0, 16);
+                const uuid = crypto.randomUUID().replace(/-/g, '');
                 placeholder = `{{SECRET_${uuid}}}`;
                 secrets.set(placeholder, secretValue);
                 valueToPlaceholder.set(secretValue, placeholder);

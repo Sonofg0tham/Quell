@@ -251,7 +251,7 @@ class SecretScanner {
             // Check if this exact secret value was already captured (O(1) via reverse map)
             let placeholder = valueToPlaceholder.get(secretValue) || '';
             if (!placeholder) {
-                const uuid = crypto.randomUUID().replace(/-/g, '').substring(0, 16);
+                const uuid = crypto.randomUUID().replace(/-/g, '');
                 placeholder = `{{SECRET_${uuid}}}`;
                 secrets.set(placeholder, secretValue);
                 valueToPlaceholder.set(secretValue, placeholder);
