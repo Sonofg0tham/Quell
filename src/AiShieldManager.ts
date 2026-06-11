@@ -72,7 +72,8 @@ export class AiShieldManager {
 
     /**
      * Remove the Quell block from all AI ignore files.
-     * Deletes the file entirely if it becomes empty.
+     * Leaves the file in place even if it is now empty — Quell never deletes
+     * files it did not exclusively create.
      */
     static disable(workspacePath: string): void {
         for (const file of IGNORE_FILES) {
@@ -111,7 +112,7 @@ export class AiShieldManager {
             if (existing.includes(MARKER_START)) { return false; } // already shielded
         }
 
-        fs.writeFileSync(filePath, existing + block, 'utf-8');
+        writeFileAtomic(filePath, existing + block);
         return true;
     }
 
@@ -122,14 +123,21 @@ export class AiShieldManager {
             `\\n?${escapeRegex(MARKER_START)}[\\s\\S]*?${escapeRegex(MARKER_END)}\\n?`, 'g'
         );
         content = content.replace(regex, '');
-        if (content.trim() === '') {
-            fs.unlinkSync(filePath);
-        } else {
-            fs.writeFileSync(filePath, content, 'utf-8');
-        }
+        writeFileAtomic(filePath, content);
     }
 }
 
 function escapeRegex(str: string): string {
     return str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
+function writeFileAtomic(filePath: string, content: string): void {
+    const tmp = filePath + '.' + process.pid + '.tmp';
+    try {
+        fs.writeFileSync(tmp, content, 'utf-8');
+        fs.renameSync(tmp, filePath);
+    } catch (err) {
+        try { fs.unlinkSync(tmp); } catch { /* ignore temp-cleanup failure */ }
+        throw err;
+    }
 }

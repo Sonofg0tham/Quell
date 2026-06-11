@@ -288,10 +288,11 @@ export function activate(context: vscode.ExtensionContext) {
                     vscode.window.showWarningMessage('Quell: Active editor changed, restore aborted to avoid writing secrets into the wrong file.');
                     return;
                 }
-                // Recompute the range from the live document; its length may have changed.
+                // Range spans the snapshot text we scanned — applyReplace returns false
+                // if the document changed under us during the keychain awaits above.
                 const fullRange = new vscode.Range(
                     document.positionAt(0),
-                    document.positionAt(document.getText().length)
+                    document.positionAt(text.length)
                 );
                 const ok = await applyReplace(editor, fullRange, restoredText);
                 if (!ok) {
@@ -359,11 +360,11 @@ export function activate(context: vscode.ExtensionContext) {
             await vaultIndexAdd(context, placeholder);
         }
 
-        // Apply redaction to the editor. Recompute the range from the live document
-        // (its length may have changed during the keychain stores above).
+        // Range spans the snapshot text we scanned — applyReplace returns false
+        // if the document changed under us during the keychain stores above.
         const fullRange = new vscode.Range(
             document.positionAt(0),
-            document.positionAt(document.getText().length)
+            document.positionAt(text.length)
         );
         const ok = await applyReplace(editor, fullRange, redactedText);
         if (!ok) {
