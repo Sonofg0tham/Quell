@@ -190,6 +190,14 @@ test('detects GitHub Fine-grained PAT', () => {
     assertAnySecretDetected('github_pat_1234567890abcdefghijkl_abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ1234567');
 });
 
+test('detects GitHub Fine-grained PAT with varying segment lengths', () => {
+    // Real fine-grained PATs do NOT have fixed 22/59 segment lengths. A token whose
+    // second segment is 54 chars (not 59) must still be caught by the regex, and must
+    // not slip through the entropy backstop's long-base64 skip.
+    const pat = 'github_pat_' + '1A'.repeat(11) + '_' + 'bcdefghijk'.repeat(5) + 'abcd';
+    assertSecretDetected(pat, 'GitHub Fine-grained PAT');
+});
+
 test('detects GitLab PAT', () => {
     assertSecretDetected('glpat-abcdefghij1234567890', 'GitLab Personal Access Token');
 });
@@ -200,6 +208,15 @@ console.log('\n💬 Communication Patterns:');
 
 test('detects Slack Bot Token', () => {
     assertSecretDetected('xoxb-1234567890-1234567890-abcdefghijklmnopqrstuvwx', 'Slack Bot Token');
+});
+
+test('detects Slack refresh token (xoxe.xoxp)', () => {
+    // Slack rotating refresh tokens (xoxe.xoxp- / xoxe.xoxb-) were not covered.
+    assertSecretDetected('xoxe.xoxp-2-' + 'A1b2C3d4e5'.repeat(4), 'Slack Refresh Token');
+});
+
+test('detects Slack app-config access token (xoxe-)', () => {
+    assertSecretDetected('xoxe-2-' + 'A1b2C3d4e5'.repeat(4), 'Slack App Config Token');
 });
 
 test('detects Slack Webhook', () => {
@@ -292,6 +309,12 @@ test('detects Generic Private Key', () => {
 
 test('detects PGP Private Key Block', () => {
     assertSecretDetected('-----BEGIN PGP PRIVATE KEY BLOCK-----', 'PGP Private Key Block');
+});
+
+test('detects Encrypted Private Key', () => {
+    // PKCS#8 encrypted private keys use a distinct header that the six specific
+    // patterns did not cover.
+    assertSecretDetected('-----BEGIN ENCRYPTED PRIVATE KEY-----', 'Encrypted Private Key');
 });
 
 
@@ -475,6 +498,15 @@ test('flags high-entropy base64-like token', () => {
     assertSecretDetected(b64Token, 'High Entropy Token');
 });
 
+test('flags long high-entropy base64 blob (>80 chars, not a source map)', () => {
+    // The ">80 char base64" entropy skip was a blanket hole: any long base64
+    // credential blob (fine-grained PATs, long project keys, encoded creds) that
+    // did not also match a regex was silently ignored. A 90-char high-entropy blob
+    // must be caught.
+    const blob = 'aB3cD4eF5gH6iJ7kL8mN9oP0qR1sT2uV3wX4yZ5a'.repeat(2) + 'aB3cD4eF5g';
+    assertAnySecretDetected(blob);
+});
+
 test('does NOT flag low-entropy repeated string', () => {
     assertNoSecrets('aaaaaaaaaaaaaaaaaaaaaaaaaaaa');
 });
@@ -556,6 +588,18 @@ test('reuses placeholder for duplicate secrets', () => {
     const secret = 'ghp_ABCDEFabcdef1234567890abcdef123456';
     const result = SecretScanner.redact(`first: ${secret} second: ${secret}`);
     assert.strictEqual(result.secrets.size, 1, 'Duplicate secret should produce only 1 placeholder');
+});
+
+test('does not leak the tail of a longer secret sharing a shorter secret prefix', () => {
+    // Two Stripe keys where the shorter is a prefix of the longer. If the shorter is
+    // redacted first, replaceAll fragments the longer one and its tail leaks.
+    const shortKey = 'sk_live_' + 'a'.repeat(12);
+    const longKey = 'sk_live_' + 'a'.repeat(12) + 'XYZ987secrettail';
+    const result = SecretScanner.redact(`a=${shortKey}\nb=${longKey}`, DEFAULT_CONFIG);
+    assert.ok(
+        !result.redactedText.includes('secrettail'),
+        `Longer secret's tail leaked into redacted text: ${result.redactedText}`
+    );
 });
 
 test('placeholder format is correct', () => {

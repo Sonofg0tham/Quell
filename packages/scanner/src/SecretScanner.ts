@@ -79,7 +79,9 @@ export class SecretScanner {
         { name: 'GitHub App Token', regex: /ghu_[a-zA-Z0-9]{36}/ },
         { name: 'GitHub App Server Token', regex: /ghs_[a-zA-Z0-9]{36}/ },
         { name: 'GitHub App Refresh Token', regex: /ghr_[a-zA-Z0-9]{36}/ },
-        { name: 'GitHub Fine-grained PAT', regex: /github_pat_[a-zA-Z0-9]{22}_[a-zA-Z0-9]{59}/ },
+        // Fine-grained PATs do not have fixed segment lengths in practice, so match the
+        // prefix plus a tolerant run of [A-Za-z0-9_] (the underscore separator is included).
+        { name: 'GitHub Fine-grained PAT', regex: /github_pat_[A-Za-z0-9_]{60,}/ },
         { name: 'GitLab Personal Access Token', regex: /glpat-[0-9A-Za-z\-_]{20}/ },
         { name: 'GitLab Pipeline Trigger Token', regex: /glptt-[0-9a-f]{40}/ },
         { name: 'GitLab Runner Token', regex: /glrt-[0-9A-Za-z\-_]{20}/ },
@@ -89,6 +91,8 @@ export class SecretScanner {
         { name: 'Slack Bot Token', regex: /xoxb-[0-9]{10,13}-[0-9]{10,13}-[a-zA-Z0-9]{24,34}/ },
         { name: 'Slack User Token', regex: /xoxp-[0-9]{10,13}-[0-9]{10,13}-[a-zA-Z0-9]{24,34}/ },
         { name: 'Slack App Token', regex: /xapp-[0-9]{1}-[A-Z0-9]{10,13}-[0-9]{10,13}-[a-zA-Z0-9]{64}/ },
+        { name: 'Slack Refresh Token', regex: /xoxe\.xox[bp]-\d+-[A-Za-z0-9]{30,}/ },
+        { name: 'Slack App Config Token', regex: /xoxe-\d+-[A-Za-z0-9]{30,}/ },
         { name: 'Slack Webhook', regex: /https:\/\/hooks\.slack\.com\/services\/T[A-Z0-9]{8,}\/B[A-Z0-9]{8,}\/[a-zA-Z0-9]{24}/ },
         { name: 'Discord Bot Token', regex: /[MN][A-Za-z\d]{23,}\.[\w-]{6}\.[\w-]{27,}/ },
         { name: 'Discord Webhook', regex: /https:\/\/discord(?:app)?\.com\/api\/webhooks\/\d+\/[\w-]+/ },
@@ -131,6 +135,7 @@ export class SecretScanner {
         { name: 'DSA Private Key', regex: /-----BEGIN DSA PRIVATE KEY-----/ },
         { name: 'OpenSSH Private Key', regex: /-----BEGIN OPENSSH PRIVATE KEY-----/ },
         { name: 'PGP Private Key Block', regex: /-----BEGIN PGP PRIVATE KEY BLOCK-----/ },
+        { name: 'Encrypted Private Key', regex: /-----BEGIN ENCRYPTED PRIVATE KEY-----/ },
         { name: 'Generic Private Key', regex: /-----BEGIN PRIVATE KEY-----/ },
 
         // ── Database Connection Strings ──────
@@ -259,27 +264,39 @@ export class SecretScanner {
             redactedText = redactedText.replaceAll(secretValue, () => placeholder);
         };
 
-        // ── Step 1: Built-in Regex Patterns ──
+        // ── Steps 1 & 2: collect built-in + custom regex matches, then redact ──
+        // Redact longer values BEFORE shorter ones so a short secret that is a substring
+        // of a longer secret cannot fragment it and leak the longer secret's tail.
+        const regexCandidates: Array<{ value: string; type: string }> = [];
+
         for (const pattern of this.GLOBAL_PATTERNS) {
             const matches = text.match(pattern.regex);
             if (matches) {
-                const uniqueMatches = [...new Set(matches)];
-                uniqueMatches.forEach((match) => replaceSecret(match, pattern.name));
+                for (const match of new Set(matches)) {
+                    regexCandidates.push({ value: match, type: pattern.name });
+                }
             }
         }
 
-        // ── Step 2: User-defined Custom Patterns ──
         for (const custom of config.customPatterns) {
             try {
                 const customRegex = new RegExp(custom.regex, 'g');
                 const matches = text.match(customRegex);
                 if (matches) {
-                    const uniqueMatches = [...new Set(matches)];
-                    uniqueMatches.forEach((match) => replaceSecret(match, custom.name));
+                    for (const match of new Set(matches)) {
+                        regexCandidates.push({ value: match, type: custom.name });
+                    }
                 }
             } catch {
                 // Silently skip invalid user-defined patterns
             }
+        }
+
+        // Stable sort by descending length keeps pattern order for equal-length values,
+        // so type attribution for duplicates is unchanged.
+        regexCandidates.sort((a, b) => b.value.length - a.value.length);
+        for (const candidate of regexCandidates) {
+            replaceSecret(candidate.value, candidate.type);
         }
 
         // ── Step 3: Shannon Entropy Scan ──
@@ -330,8 +347,14 @@ export class SecretScanner {
                 // Skip well-known character set definitions (base32, base36, hex alphabets)
                 if (/^[A-Z0-9]{20,36}$/.test(token) && /^[A-Z2-7]+$|^[0-9A-Z]+$|^[0-9A-F]+$/i.test(token)) { continue; }
 
-                // Skip base64 blobs (>80 chars) — likely source maps, webpack output, not secrets
-                if (token.length > 80 && /^[A-Za-z0-9+/=_-]+$/.test(token)) { continue; }
+                // Skip base64 blobs — likely source maps / webpack output, not secrets.
+                // Only skip genuinely huge tokens (>1500 chars): real secrets are virtually
+                // never a single token that long, but build artefacts routinely are. Never
+                // skip tokens that carry a known secret prefix, so a long credential blob
+                // can't hide behind this rule (the old >80 threshold was a blanket hole).
+                if (!/^(github_pat_|ghp_|gho_|ghu_|ghs_|ghr_|xox|sk-|glpat-|npm_)/.test(token)) {
+                    if (token.length > 1500 && /^[A-Za-z0-9+/=_-]+$/.test(token)) { continue; }
+                }
 
                 // Skip webpack module identifiers (e.g. __WEBPACK_IMPORTED_MODULE_)
                 if (/__WEBPACK_/.test(token) || /__esModule/.test(token)) { continue; }

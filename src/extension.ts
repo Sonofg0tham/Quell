@@ -29,6 +29,41 @@ async function vaultIndexClear(context: vscode.ExtensionContext): Promise<void> 
     await context.globalState.update(VAULT_INDEX_KEY, []);
 }
 
+async function vaultIndexRemove(context: vscode.ExtensionContext, placeholder: string): Promise<void> {
+    const stored = context.globalState.get<string[]>(VAULT_INDEX_KEY, []);
+    const index = new Set<string>(stored);
+    if (index.delete(placeholder)) {
+        await context.globalState.update(VAULT_INDEX_KEY, Array.from(index));
+    }
+}
+
+/**
+ * Rolls back keychain entries that were stored just before an editor edit that then
+ * failed. Without this, a rejected edit leaves orphaned secrets in the vault that
+ * point at placeholders which never made it into any file.
+ */
+async function rollbackStoredSecrets(context: vscode.ExtensionContext, placeholders: Iterable<string>): Promise<void> {
+    for (const placeholder of placeholders) {
+        await context.secrets.delete(placeholder);
+        await vaultIndexRemove(context, placeholder);
+    }
+}
+
+/**
+ * Applies a single replace edit and returns whether VS Code accepted it.
+ * editor.edit() resolves false when the edit is rejected (document changed under us,
+ * read-only file, or another edit in flight). Callers MUST check this: for a redaction
+ * tool a silently-rejected edit means the raw secret is still on screen while the UI
+ * would otherwise claim success.
+ */
+async function applyReplace(editor: vscode.TextEditor, range: vscode.Range, newText: string): Promise<boolean> {
+    try {
+        return await editor.edit((b) => b.replace(range, newText));
+    } catch {
+        return false;
+    }
+}
+
 // ═════════════════════════════════════════════════════
 //  Activation
 // ═════════════════════════════════════════════════════
@@ -192,8 +227,8 @@ export function activate(context: vscode.ExtensionContext) {
 
             stream.markdown('## ✨ Quell — All Clear\n\n');
             stream.markdown('No secrets detected in your prompt. Your data is safe to share with the AI model.\n\n');
-            stream.markdown('**Your Prompt:**\n');
-            stream.markdown('> ' + userPrompt);
+            // Deliberately do NOT echo the raw prompt back: on a scanner false-negative that
+            // would re-emit the secret into the chat transcript (which may be persisted).
 
             return { metadata: { command: 'echo' } };
         }
@@ -244,11 +279,25 @@ export function activate(context: vscode.ExtensionContext) {
             }
 
             if (restoredCount > 0) {
+                // Guard: this is the one path that writes REAL secret values back into a
+                // document. If the user moved to a different editor during the awaits above,
+                // abort rather than de-redacting secrets into the wrong file. (A null active
+                // editor means focus is on the sidebar/webview, which is a legitimate flow.)
+                if (vscode.window.activeTextEditor && vscode.window.activeTextEditor !== editor) {
+                    vscode.window.showWarningMessage('Quell: Active editor changed, restore aborted to avoid writing secrets into the wrong file.');
+                    return;
+                }
+                // Recompute the range from the live document; its length may have changed.
                 const fullRange = new vscode.Range(
                     document.positionAt(0),
-                    document.positionAt(text.length)
+                    document.positionAt(document.getText().length)
                 );
-                await editor.edit((editBuilder) => editBuilder.replace(fullRange, restoredText));
+                const ok = await applyReplace(editor, fullRange, restoredText);
+                if (!ok) {
+                    Logger.error('Restore: editor edit rejected, placeholders left untouched.');
+                    vscode.window.showErrorMessage('Quell: Restore failed, placeholders were left untouched. Please try again.');
+                    return;
+                }
 
                 vscode.window.showInformationMessage(`🛡️ Quell: Restored ${restoredCount} secret(s) successfully.`);
                 Logger.restore(restoredCount);
@@ -309,12 +358,22 @@ export function activate(context: vscode.ExtensionContext) {
             await vaultIndexAdd(context, placeholder);
         }
 
-        // Apply redaction to the editor
+        // Apply redaction to the editor. Recompute the range from the live document
+        // (its length may have changed during the keychain stores above).
         const fullRange = new vscode.Range(
             document.positionAt(0),
-            document.positionAt(text.length)
+            document.positionAt(document.getText().length)
         );
-        await editor.edit((editBuilder) => editBuilder.replace(fullRange, redactedText));
+        const ok = await applyReplace(editor, fullRange, redactedText);
+        if (!ok) {
+            // The file was NOT modified, so the raw secrets are still exposed. Roll back
+            // the keychain entries we just stored and tell the user the truth.
+            await rollbackStoredSecrets(context, secrets.keys());
+            StatusBar.setIdle();
+            Logger.error('Redact File: editor edit rejected, raw secret still present.');
+            vscode.window.showErrorMessage('Quell: Could not modify the file. Your secret is STILL exposed. Please try again.');
+            return;
+        }
 
         const typesList = Array.from(detectedTypes).join(', ');
         vscode.window.showInformationMessage(
@@ -364,7 +423,14 @@ export function activate(context: vscode.ExtensionContext) {
             await vaultIndexAdd(context, placeholder);
         }
 
-        await editor.edit((editBuilder) => editBuilder.replace(selection, redactedText));
+        const ok = await applyReplace(editor, selection, redactedText);
+        if (!ok) {
+            await rollbackStoredSecrets(context, secrets.keys());
+            StatusBar.setIdle();
+            Logger.error('Redact Selection: editor edit rejected, raw secret still present.');
+            vscode.window.showErrorMessage('Quell: Could not modify the selection. Your secret is STILL exposed. Please try again.');
+            return;
+        }
 
         const typesList = Array.from(detectedTypes).join(', ');
         vscode.window.showInformationMessage(
@@ -567,9 +633,14 @@ export function activate(context: vscode.ExtensionContext) {
             }
 
             // Paste the sanitized version
-            await editor.edit((editBuilder) => {
-                editBuilder.replace(editor.selection, redactedText);
-            });
+            const ok = await applyReplace(editor, editor.selection, redactedText);
+            if (!ok) {
+                await rollbackStoredSecrets(context, secrets.keys());
+                StatusBar.setIdle();
+                Logger.error('Sanitized Paste: editor edit rejected, nothing pasted.');
+                vscode.window.showErrorMessage('Quell: Could not paste into the editor. Nothing was changed.');
+                return;
+            }
 
             const typesList = Array.from(detectedTypes).join(', ');
             vscode.window.showWarningMessage(
@@ -795,7 +866,15 @@ export function activate(context: vscode.ExtensionContext) {
 
             const edit = new vscode.WorkspaceEdit();
             edit.replace(uri, range, placeholder);
-            await vscode.workspace.applyEdit(edit);
+            const ok = await vscode.workspace.applyEdit(edit);
+            if (!ok) {
+                // Edit rejected: the secret is still in the file. Roll back the vault entry
+                // we just created so it doesn't dangle, and tell the user the truth.
+                await rollbackStoredSecrets(context, [placeholder]);
+                Logger.error('Quick Fix: edit rejected, raw secret still present (vault entry rolled back).');
+                vscode.window.showErrorMessage('Quell: Could not redact the secret. It is STILL exposed. Please try again.');
+                return;
+            }
 
             Logger.info(`Redacted single secret [Quick Fix] → ${placeholder}`);
             StatusBar.setAlert(1);

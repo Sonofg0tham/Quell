@@ -30,6 +30,16 @@ export class DiagnosticProvider implements vscode.CodeActionProvider {
                         this.updateDiagnostics(doc);
                     }
                 }, 500);
+            }),
+            // When a document closes, drop its cleartext secrets from memory immediately.
+            // Otherwise the range→secret map retains plaintext for closed files for the
+            // entire session, contradicting the promise that real values stay in the vault.
+            vscode.workspace.onDidCloseTextDocument(doc => {
+                const prefix = doc.uri.toString() + ':';
+                for (const key of [...this.secretRangeMap.keys()]) {
+                    if (key.startsWith(prefix)) { this.secretRangeMap.delete(key); }
+                }
+                this.collection.delete(doc.uri);
             })
         );
 
