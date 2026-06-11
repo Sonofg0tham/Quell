@@ -213,8 +213,7 @@ export class SecretScanner {
         // These produce noisy false positives in docs, READMEs, and example configs.
         const PLACEHOLDER_VALUES = new Set([
             'changeme', 'password', 'your_password', 'your_password_here',
-            'xxx', 'xxxxxx', 'example', 'placeholder', '123456', 'hunter2',
-            'test', 'secret', 'your_secret', 'your_secret_here',
+            'placeholder', 'your_secret', 'your_secret_here',
             'your_api_key', 'your_api_key_here', 'your_token', 'your_token_here',
         ]);
 
@@ -302,7 +301,7 @@ export class SecretScanner {
         // ── Step 3: Shannon Entropy Scan ──
         if (config.enableEntropy) {
             // Tokenize the *current* redacted text (after regex replacements)
-            const tokens = redactedText.split(/[\s="',`:;()\[\]{}]+/);
+            const tokens = redactedText.split(/[\s="',`:;()\[\]{}<>|]+/);
             for (const token of tokens) {
                 // Skip already-redacted placeholders
                 if (token.startsWith('{{SECRET_') && token.endsWith('}}')) { continue; }
@@ -368,10 +367,7 @@ export class SecretScanner {
                 if (token.length >= config.minimumTokenLength) {
                     const entropy = this.calculateEntropy(token);
                     if (entropy > config.entropyThreshold) {
-                        const type = /^[0-9a-fA-F]+$/.test(token)
-                            ? 'High Entropy Hex String'
-                            : 'High Entropy Token';
-                        replaceSecret(token, type);
+                        replaceSecret(token, 'High Entropy Token');
                     }
                 }
             }
