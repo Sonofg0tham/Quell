@@ -803,12 +803,21 @@ export function activate(context: vscode.ExtensionContext) {
                         sidebarProvider.setClipboardWarning(true);
                         Logger.warn(`CLIPBOARD SENTRY: Detected ${secrets.size} secret(s) on clipboard [${typesList}]. Use Ctrl+Shift+C to safely copy.`);
                         vscode.window.showWarningMessage(
-                            `⚠️ Quell: Secret detected on clipboard [${typesList}]. Enable 'Auto Sanitize Clipboard' in settings to protect AI chats!`,
-                            'Enable Auto-Sanitize', 'How to copy safely?'
-                        ).then(choice => {
+                            `⚠️ Quell: Secret detected on clipboard [${typesList}].`,
+                            'Sanitise Now', 'Enable Auto-Sanitize', 'How to copy safely?'
+                        ).then(async choice => {
                             clipboardWarningActive = false;
                             sidebarProvider.setClipboardWarning(false);
-                            if (choice === 'Enable Auto-Sanitize') {
+                            if (choice === 'Sanitise Now') {
+                                for (const [placeholder, secretValue] of secrets) {
+                                    await context.secrets.store(placeholder, secretValue);
+                                    await vaultIndexAdd(context, placeholder);
+                                }
+                                await vscode.env.clipboard.writeText(redactedText);
+                                lastClipboardText = redactedText;
+                                Logger.warn(`CLIPBOARD SENTRY: Manually sanitized ${secrets.size} secret(s) [${typesList}].`);
+                                vscode.window.showInformationMessage('🛡️ Quell: Clipboard sanitised. Safe to paste.');
+                            } else if (choice === 'Enable Auto-Sanitize') {
                                 vscode.workspace.getConfiguration('quell').update('autoSanitizeClipboard', true, vscode.ConfigurationTarget.Global);
                                 vscode.window.showInformationMessage('🛡️ Quell: Auto-sanitize enabled. Future secrets will be instantly protected.');
                             } else if (choice === 'How to copy safely?') {
@@ -825,7 +834,9 @@ export function activate(context: vscode.ExtensionContext) {
                     sidebarProvider.setClipboardWarning(false);
                 }
             }
-        } catch { /* clipboard read failures are silent */ }
+        } catch (err) {
+            Logger.warn(`Clipboard Sentry: read/write error — ${err instanceof Error ? err.message : String(err)}`);
+        }
     }, 1000);
     context.subscriptions.push({ dispose: () => clearInterval(clipboardSentryInterval) });
 
