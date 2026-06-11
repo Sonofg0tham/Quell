@@ -114,7 +114,7 @@ export function activate(context: vscode.ExtensionContext) {
 
     // ── Vibe Check: first-install workspace scan ─────────────
     if (isFirstInstall && workspacePath) {
-        setTimeout(async () => {
+        const firstInstallTimer = setTimeout(async () => {
             const files = await vscode.workspace.findFiles(
                 '**/*.{ts,js,tsx,jsx,py,env,json,yml,yaml,toml}',
                 '{**/node_modules/**,**/.git/**,**/dist/**,**/out/**}'
@@ -151,6 +151,7 @@ export function activate(context: vscode.ExtensionContext) {
                 vscode.window.showInformationMessage(`✅ Quell: Initial scan complete — no exposed secrets found.${capNote}`);
             }
         }, 5000);
+        context.subscriptions.push({ dispose: () => clearTimeout(firstInstallTimer) });
     }
 
     // ─────────────────────────────────────────
@@ -847,7 +848,14 @@ export function activate(context: vscode.ExtensionContext) {
     const openFileCmd = vscode.commands.registerCommand('quell.openFile', async (relPath: string) => {
         const workspaceFolders = vscode.workspace.workspaceFolders;
         if (!workspaceFolders) return;
-        const uri = vscode.Uri.joinPath(workspaceFolders[0].uri, relPath);
+        const rootUri = workspaceFolders[0].uri;
+        const uri = vscode.Uri.joinPath(rootUri, relPath);
+        const rootStr = rootUri.toString();
+        const fileStr = uri.toString();
+        if (!fileStr.startsWith(rootStr + '/') && fileStr !== rootStr) {
+            Logger.warn(`openFile: rejected path outside workspace: ${relPath}`);
+            return;
+        }
         const doc = await vscode.workspace.openTextDocument(uri);
         await vscode.window.showTextDocument(doc);
     });

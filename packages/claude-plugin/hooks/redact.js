@@ -32,8 +32,8 @@ const FAIL_OPEN_EXIT = 0;
 const BLOCK_EXIT = 2;
 
 function failOpen(reason) {
-    if (reason && process.env.QUELL_DEBUG) {
-        process.stderr.write(`[Quell hook fail-open: ${reason}]\n`);
+    if (reason) {
+        process.stderr.write(`[Quell] hook fail-open: ${reason}\n`);
     }
     process.exit(FAIL_OPEN_EXIT);
 }
