@@ -18,8 +18,20 @@ jobs:
         with:
           node-version: '20'
 
-      - name: Install dependencies
+      - name: Install root dependencies
         run: npm ci
 
       - name: Compile + run scanner tests
         run: npm test
+
+      - name: Claude plugin hook tests
+        working-directory: packages/claude-plugin
+        run: npm test
+
+      - name: Install scanner dev dependencies
+        working-directory: packages/scanner
+        run: npm ci
+
+      - name: Verify plugin scanner copy is not stale
+        working-directory: packages/claude-plugin
+        run: npm run bundle-scanner && git diff --exit-code scanner/
