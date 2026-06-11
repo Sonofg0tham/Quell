@@ -98,5 +98,54 @@ test('fails open with exit 0 on malformed stdin JSON', () => {
     }
 });
 
+test('fails open with exit 0 when prompt field is absent from JSON', () => {
+    const result = spawnSync('node', [HOOK], {
+        input: JSON.stringify({}),
+        encoding: 'utf8',
+    });
+    if (result.status !== 0) {
+        throw new Error('expected fail-open exit 0, got ' + result.status + '; stderr: ' + result.stderr);
+    }
+    if (!result.stderr || !result.stderr.includes('fail-open')) {
+        throw new Error('expected fail-open reason in stderr, got: ' + result.stderr);
+    }
+});
+
+test('fails open with exit 0 when prompt is an empty string', () => {
+    const result = spawnSync('node', [HOOK], {
+        input: JSON.stringify({ prompt: '' }),
+        encoding: 'utf8',
+    });
+    if (result.status !== 0) {
+        throw new Error('expected fail-open exit 0, got ' + result.status + '; stderr: ' + result.stderr);
+    }
+    if (!result.stderr || !result.stderr.includes('fail-open')) {
+        throw new Error('expected fail-open reason in stderr, got: ' + result.stderr);
+    }
+});
+
+test('blocks a high-entropy token caught only by entropy analysis (exit 2, type "High Entropy Token")', () => {
+    // This string has no known-secret prefix — it is not matched by any regex
+    // pattern — but has high Shannon entropy (>4.5) from its mixed-case+digit
+    // composition, so it should be caught by the entropy pass only.
+    const entropyToken = 'xK9mZ2pQnL5vRjY8wC4dFbG6eT7hN3sA';
+    const fixture = 'The internal config value is ' + entropyToken + ' and must not be shared.';
+
+    const result = runHook(fixture);
+
+    if (result.status !== 2) {
+        throw new Error('expected exit 2, got ' + result.status + '; stderr: ' + result.stderr);
+    }
+    if (!result.stderr || !result.stderr.includes('{{SECRET_')) {
+        throw new Error('expected a {{SECRET_xxxx}} placeholder in stderr');
+    }
+    if (result.stderr.includes(entropyToken)) {
+        throw new Error('CRITICAL: stderr leaked the high-entropy token');
+    }
+    if (!result.stderr.includes('High Entropy Token')) {
+        throw new Error('expected type "High Entropy Token" in stderr, got: ' + result.stderr);
+    }
+});
+
 console.log('\n' + passed + ' passed, ' + failed + ' failed');
 process.exit(failed > 0 ? 1 : 0);
