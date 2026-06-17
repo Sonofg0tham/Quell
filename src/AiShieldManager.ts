@@ -107,18 +107,20 @@ export class AiShieldManager {
         const block = `\n${MARKER_START}\n${SHIELD_PATTERNS}\n${MARKER_END}\n`;
         let existing = '';
 
-        if (fs.existsSync(filePath)) {
+        try {
             existing = fs.readFileSync(filePath, 'utf-8');
             if (existing.includes(MARKER_START)) { return false; } // already shielded
-        }
+        } catch { /* file doesn't exist yet */ }
 
         writeFileAtomic(filePath, existing + block);
         return true;
     }
 
     private static _remove(filePath: string): void {
-        if (!fs.existsSync(filePath)) { return; }
-        let content = fs.readFileSync(filePath, 'utf-8');
+        let content: string;
+        try {
+            content = fs.readFileSync(filePath, 'utf-8');
+        } catch { return; }
         const regex = new RegExp(
             `\\n?${escapeRegex(MARKER_START)}[\\s\\S]*?${escapeRegex(MARKER_END)}\\n?`, 'g'
         );
