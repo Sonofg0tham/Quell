@@ -40,11 +40,13 @@ const SHIELD_PATTERNS = [
 
 /** AI IDE ignore file names (new IDEs can be added here) */
 const IGNORE_FILES = [
-    '.cursorignore',
-    '.windsurfignore',
-    '.antigravityignore',
-    '.aiderignore',
-    '.aiignore',
+    '.cursorignore',        // Cursor
+    '.codeiumignore',       // Windsurf / Codeium (the actual filename Cascade honours)
+    '.windsurfignore',      // kept belt-and-braces; older Windsurf builds
+    '.aiexclude',           // Antigravity / Gemini Code Assist (Google's documented file)
+    '.antigravityignore',   // kept belt-and-braces
+    '.aiderignore',         // Aider
+    '.aiignore',            // generic / JetBrains AI
 ];
 
 export class AiShieldManager {

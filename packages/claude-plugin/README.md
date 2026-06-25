@@ -69,8 +69,9 @@ The hook is wrapped in defensive `try`/`catch` and returns exit 0 (passthrough) 
 - scanner throwing on bad input
 - empty prompts
 
-Set `QUELL_DEBUG=1` in your shell environment to see the reason for any silent
-fail-open in stderr. A hook that breaks your workflow is worse than a hook that
+Whenever the hook fails open it writes a one-line reason to stderr (e.g.
+`[Quell] hook fail-open: scanner load failed: ...`) so you always know why it
+stepped aside. A hook that breaks your workflow is worse than a hook that
 occasionally misses a secret — the VSCode extension and good Git hygiene are your
 defence-in-depth.
 
