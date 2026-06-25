@@ -15,5 +15,30 @@ out/test/**
 out/packages/scanner/src/test/**
 packages/scanner/dist-test/**
 packages/scanner/src/test/**
+# The extension runs entirely from out/ at runtime (out/packages/scanner/...),
+# so the top-level package sources and the separate Claude plugin never need to
+# ship inside the VSIX. Keeps the security-tool package lean and source-free.
+packages/claude-plugin/**
+packages/scanner/**
+.github/**
+# Local dev-tooling and session artefacts — must never ship in a public extension.
+.remember/**
+**/.remember/**
+.Jules/**
+.jules/**
+.claude/**
+**/.claude/**
 playground/**
 FIX_PROMPTS/**
+# Internal-only docs (keep README/CHANGELOG/LICENSE/SECURITY, which are user-facing).
+CLAUDE.md
+PROJECT_STATUS.md
+POSITIONING.md
+# Quell's own repo ignore files — pointless inside the packaged extension.
+.cursorignore
+.windsurfignore
+.antigravityignore
+.codeiumignore
+.aiexclude
+.aiignore
+.aiderignore

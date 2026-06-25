@@ -2,6 +2,59 @@
 
 All notable changes to Quell will be documented in this file.
 
+## [2.8.0] - 2026-06-25
+
+A security-hardening release. Every change that touches a secret now fails safe,
+and the test suite that guards detection is enforced in CI for the first time.
+
+### 🔒 Security hardening
+- **Honest redaction.** Every editor edit that redacts or restores a secret now
+  checks that the write actually succeeded. If VSCode rejects the edit, Quell
+  rolls back the vault entry and tells you the secret is still exposed, instead
+  of falsely reporting success.
+- **Restore can't cross files.** Restoring real values now re-validates the active
+  editor first and aborts if you've switched files, so secrets can never be written
+  back into the wrong document.
+- **Secrets leave memory on close.** Cleartext secrets are pruned from the in-memory
+  map the moment a document closes, rather than lingering for the whole session.
+- **Path-traversal guard.** `Open File` from the sidebar now refuses any path that
+  resolves outside the workspace.
+- **Atomic shield writes.** AI Shield ignore-file updates are written atomically and
+  never delete a file Quell did not create.
+- **Webview CSP.** The sidebar dropped `unsafe-inline` for a per-render nonce.
+- Full 32-character placeholder IDs (was truncated to 16); hover command-trust scoped
+  to a single command.
+
+### 🔍 Detection
+- **New patterns:** encrypted private keys (`BEGIN ENCRYPTED PRIVATE KEY`) and Slack
+  `xoxe` refresh / app-config tokens.
+- **Broadened** GitHub fine-grained PAT matching, which was missing real tokens whose
+  segment lengths differed from the assumed fixed sizes.
+- **Closed** a base64 entropy-skip hole that let very long tokens slip past the scanner.
+- **Overlap fix:** longer secrets are redacted before shorter ones, so a short secret
+  that is a prefix of a longer one can no longer fragment it and leak the tail.
+
+### 🛡️ Cross-surface coverage
+- AI Shield now writes the **correct ignore filenames** for Windsurf (`.codeiumignore`)
+  and Antigravity (`.aiexclude`) alongside the existing ones.
+- **Clipboard Sentry** warning gained a one-click **"Sanitise Now"** button, and now
+  logs read/write errors instead of swallowing them silently.
+
+### 🧪 Tests & CI
+- **CI test gate.** A new workflow runs the scanner and plugin test suites on every push
+  and pull request, and blocks a release if any test fails.
+- **Scanner drift guard.** CI fails if the Claude Code plugin's bundled scanner copy
+  diverges from source.
+- Scanner suite grew by 6 regression tests (84 total); the plugin hook suite went from
+  3 to 6 tests.
+
+### 🧹 Internal
+- Removed a dead hex-entropy branch and unreachable allowlist entries; the entropy
+  tokeniser now splits on `<`, `>` and `|`.
+- First-install scan timer is cleared on deactivate.
+- The Claude Code hook always writes its fail-open reason to stderr (previously gated
+  behind `QUELL_DEBUG`).
+
 ## [2.7.0] - 2026-04-23
 
 ### 🔍 New Detection Patterns
