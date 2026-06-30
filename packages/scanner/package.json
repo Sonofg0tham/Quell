@@ -1,6 +1,6 @@
 {
   "name": "@sonofg0tham/quell-scanner",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "Offline secret-detection engine. Regex patterns plus Shannon entropy. Zero runtime dependencies. The core scanner behind the Quell VSCode extension.",
   "keywords": [
     "security",
