@@ -1,7 +1,10 @@
 # Quell
 
+[![CI](https://github.com/Sonofg0tham/Quell/actions/workflows/ci.yml/badge.svg)](https://github.com/Sonofg0tham/Quell/actions/workflows/ci.yml)
 [![VS Marketplace Version](https://img.shields.io/visual-studio-marketplace/v/Sonofg0tham.quell)](https://marketplace.visualstudio.com/items?itemName=Sonofg0tham.quell)
 [![VS Marketplace Installs](https://img.shields.io/visual-studio-marketplace/i/Sonofg0tham.quell)](https://marketplace.visualstudio.com/items?itemName=Sonofg0tham.quell)
+[![Open VSX](https://img.shields.io/open-vsx/v/Sonofg0tham/quell?label=Open%20VSX)](https://open-vsx.org/extension/Sonofg0tham/quell)
+[![npm](https://img.shields.io/npm/v/%40sonofg0tham%2Fquell-scanner?label=quell-scanner)](https://www.npmjs.com/package/@sonofg0tham/quell-scanner)
 
 **Stop leaking secrets to AI.** Quell intercepts your prompts, scans for API keys, tokens, passwords, and connection strings — and replaces them with secure placeholders before the AI ever sees them. Real values are stored safely in your OS Keychain.
 
@@ -30,7 +33,7 @@ Every time you paste code into an AI chat (Copilot, Cursor, Windsurf, Antigravit
 ## ⚡ How It Works
 
 1. **You write code** with real secrets
-2. **Quell scans** using 75+ regex patterns + Shannon entropy analysis
+2. **Quell scans** using 80+ regex patterns + Shannon entropy analysis
 3. **AI receives safe placeholders** — `{{SECRET_xxx}}` instead of your real keys
 
 ```diff
@@ -46,6 +49,20 @@ Every time you paste code into an AI chat (Copilot, Cursor, Windsurf, Antigravit
 
 ---
 
+## 🧩 One Engine, Three Surfaces
+
+The same offline detection engine (80+ regex patterns + Shannon entropy) ships in three forms, so protection follows you across tools:
+
+| Surface | What it protects | Get it |
+|---|---|---|
+| **VSCode extension** | Editing, clipboard, AI-chat paste in VSCode, Cursor and Windsurf | [VS Marketplace](https://marketplace.visualstudio.com/items?itemName=Sonofg0tham.quell) · [Open VSX](https://open-vsx.org/extension/Sonofg0tham/quell) |
+| **Claude Code plugin** | Blocks secret-bearing prompts before they reach Claude, and asks before a tool call reads a secret and sends it over the network (exfiltration guard) | [`packages/claude-plugin`](packages/claude-plugin) |
+| **`@sonofg0tham/quell-scanner`** | The standalone engine for your own pipelines, hooks, or CI | [npm](https://www.npmjs.com/package/@sonofg0tham/quell-scanner) |
+
+All three are offline, dependency-free, and share one test suite enforced in CI.
+
+---
+
 ## ✨ Features
 
 ### 📋 Copy Redacted (`Ctrl+Shift+C`)
@@ -56,7 +73,7 @@ Paste from any source with secrets automatically stripped. Works with code copie
 
 > **Note:** Quell rebinds `Ctrl+Shift+V` in the editor, which conflicts with VSCode's built-in "Paste without formatting" in some contexts. If you prefer the default binding, remap Quell's Sanitised Paste via **File > Preferences > Keyboard Shortcuts**.
 
-### 🔍 75+ Secret Patterns
+### 🔍 80+ Secret Patterns
 Regex-based detection covering:
 
 | Category | Examples |
@@ -77,7 +94,7 @@ Regex-based detection covering:
 Catches high-randomness tokens that don't match any known pattern — configurable threshold and minimum token length.
 
 ### 🤖 AI Indexing Shield
-One-click toggle that generates `.cursorignore`, `.windsurfignore`, `.antigravityignore`, `.aiderignore`, and `.aiignore` files — blocking AI IDEs from silently indexing your secret files.
+One-click toggle that generates `.cursorignore`, `.codeiumignore`, `.aiexclude`, `.aiderignore`, `.aiignore` and legacy variants — blocking AI IDEs from silently indexing your secret files.
 
 ### ⚡ Clipboard Sentry & Auto-Sanitize
 Passive clipboard monitoring that warns you within 1 second when a secret is on your clipboard. Enable **Auto-Sanitize** from the sidebar dashboard to automatically replace clipboard secrets with safe placeholders — so even a regular `Ctrl+V` into Cursor or Windsurf chat is safe.
@@ -145,9 +162,11 @@ Get notified when saving a file that still contains raw secrets — with a one-c
 |-----|-----------|-----------|
 | VS Code | ✅ | `.aiignore` |
 | Cursor | ✅ | `.cursorignore` |
-| Windsurf | ✅ | `.windsurfignore` |
-| Antigravity | ✅ | `.antigravityignore` |
+| Windsurf | ✅ | `.codeiumignore` (+ `.windsurfignore`) |
+| Antigravity | ✅ | `.aiexclude` (+ `.antigravityignore`) |
 | Aider | ✅ | `.aiderignore` |
+
+Ignore files are best-effort context exclusion, not a hard control. For agentic tools, pair them with the Clipboard Sentry and the [Claude Code plugin](packages/claude-plugin).
 
 ---
 
