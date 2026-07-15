@@ -1,6 +1,6 @@
 <picture>
-  <source media="(prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/Sonofg0tham/Quell/main/assets/quell-logo-dark.svg">
-  <img src="https://raw.githubusercontent.com/Sonofg0tham/Quell/main/assets/quell-logo-light.svg" alt="Quell" height="56">
+  <source media="(prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/Sonofg0tham/Quell/main/assets/quell-logo-dark.png">
+  <img src="https://raw.githubusercontent.com/Sonofg0tham/Quell/main/assets/quell-logo-light.png" alt="Quell" height="56">
 </picture>
 
 [![CI](https://github.com/Sonofg0tham/Quell/actions/workflows/ci.yml/badge.svg)](https://github.com/Sonofg0tham/Quell/actions/workflows/ci.yml)

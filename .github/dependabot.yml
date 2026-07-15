@@ -20,6 +20,10 @@ updates:
       # Ignore major version bumps — these should be reviewed manually
       - dependency-name: "*"
         update-types: ["version-update:semver-major"]
+      # @types/vscode must stay <= engines.vscode. Dependabot doesn't know
+      # that, and a newer bump breaks `vsce package`. Pin it manually when
+      # deliberately raising the minimum VS Code version.
+      - dependency-name: "@types/vscode"
 
   # GitHub Actions (if you add any in future)
   - package-ecosystem: "github-actions"
