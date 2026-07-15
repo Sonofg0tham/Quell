@@ -4,8 +4,7 @@
 </picture>
 
 [![CI](https://github.com/Sonofg0tham/Quell/actions/workflows/ci.yml/badge.svg)](https://github.com/Sonofg0tham/Quell/actions/workflows/ci.yml)
-[![VS Marketplace Version](https://img.shields.io/visual-studio-marketplace/v/Sonofg0tham.quell)](https://marketplace.visualstudio.com/items?itemName=Sonofg0tham.quell)
-[![VS Marketplace Installs](https://img.shields.io/visual-studio-marketplace/i/Sonofg0tham.quell)](https://marketplace.visualstudio.com/items?itemName=Sonofg0tham.quell)
+[![VS Marketplace](https://img.shields.io/badge/VS%20Marketplace-Quell-23A7C7)](https://marketplace.visualstudio.com/items?itemName=Sonofg0tham.quell)
 [![Open VSX](https://img.shields.io/open-vsx/v/Sonofg0tham/quell?label=Open%20VSX)](https://open-vsx.org/extension/Sonofg0tham/quell)
 [![npm](https://img.shields.io/npm/v/%40sonofg0tham%2Fquell-scanner?label=quell-scanner)](https://www.npmjs.com/package/@sonofg0tham/quell-scanner)
 
