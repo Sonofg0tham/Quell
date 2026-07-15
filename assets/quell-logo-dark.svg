@@ -1,0 +1,20 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 182 64" width="182" height="64" role="img" aria-label="Quell">
+  <!-- For dark backgrounds. Rounded geometric caps; the Q's counter and the E's
+       middle arm are redaction bars - Quell's signature. -->
+  <g fill="none" stroke="#E7ECEE" stroke-width="7" stroke-linecap="round" stroke-linejoin="round">
+    <!-- Q: ring + baseline tail -->
+    <circle cx="28" cy="32" r="17"/>
+    <line x1="38" y1="44" x2="47" y2="53"/>
+    <!-- U -->
+    <path d="M62 12 V38 a12 12 0 0 0 24 0 V12"/>
+    <!-- E: stem, top and bottom arms; middle arm is the redaction bar below -->
+    <path d="M118 12 H101 V52 H118"/>
+    <!-- L -->
+    <path d="M130 12 V52 H146"/>
+    <!-- L -->
+    <path d="M158 12 V52 H174"/>
+  </g>
+  <!-- redaction bars: the Q's sealed counter and the E's middle arm -->
+  <rect x="19" y="28.5" width="18" height="7" rx="3.5" fill="#23A7C7"/>
+  <rect x="106" y="28.5" width="12" height="7" rx="3.5" fill="#23A7C7"/>
+</svg>

@@ -1,0 +1,35 @@
+/* Quell brand tokens - generated from brand.md. Dark-first. */
+
+:root {
+  /* palette */
+  --quell-bg: hsl(200 14% 8%);
+  --quell-fg: hsl(200 12% 92%);
+  --quell-accent: hsl(192 70% 46%);
+  --quell-accent-muted: hsl(192 55% 38%);
+  --quell-border: hsl(200 12% 20%);
+  --quell-muted: hsl(200 8% 60%);
+  --quell-surface: hsl(200 14% 11%);
+  --quell-surface-raised: hsl(200 13% 14%);
+
+  /* type */
+  --quell-font-display: "Cabinet Grotesk", "Segoe UI", sans-serif;
+  --quell-font-body: "Satoshi", "Segoe UI", sans-serif;
+  --quell-font-mono: "Fira Code", Consolas, monospace;
+
+  /* shape */
+  --quell-radius: 0.5rem;
+
+  /* the redaction bar: use for anything standing in for a secret */
+  --quell-redaction: linear-gradient(0deg, var(--quell-accent), var(--quell-accent));
+}
+
+@media (prefers-color-scheme: light) {
+  :root {
+    --quell-bg: hsl(195 25% 97%);
+    --quell-fg: hsl(200 14% 11%);
+    --quell-border: hsl(198 15% 86%);
+    --quell-muted: hsl(200 8% 42%);
+    --quell-surface: hsl(195 22% 94%);
+    --quell-surface-raised: hsl(0 0% 100%);
+  }
+}

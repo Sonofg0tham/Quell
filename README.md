@@ -1,4 +1,7 @@
-# Quell
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/Sonofg0tham/Quell/main/assets/quell-logo-dark.svg">
+  <img src="https://raw.githubusercontent.com/Sonofg0tham/Quell/main/assets/quell-logo-light.svg" alt="Quell" height="56">
+</picture>
 
 [![CI](https://github.com/Sonofg0tham/Quell/actions/workflows/ci.yml/badge.svg)](https://github.com/Sonofg0tham/Quell/actions/workflows/ci.yml)
 [![VS Marketplace Version](https://img.shields.io/visual-studio-marketplace/v/Sonofg0tham.quell)](https://marketplace.visualstudio.com/items?itemName=Sonofg0tham.quell)

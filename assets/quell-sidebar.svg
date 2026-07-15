@@ -1,4 +1,6 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
-  <circle cx="10.5" cy="11.5" r="7.5" fill="none" stroke="currentColor" stroke-width="2.25"/>
-  <rect x="12" y="13" width="10" height="3.5" rx="1" fill="currentColor" transform="rotate(38 12 13)"/>
+  <!-- the Sealed-Q: ring, redacted counter, tail crossing the rim -->
+  <circle cx="11" cy="11" r="6.5" fill="none" stroke="currentColor" stroke-width="2.25"/>
+  <rect x="7.4" y="9.9" width="7.2" height="2.2" rx="1.1" fill="currentColor"/>
+  <line x1="13.6" y1="13.6" x2="17.6" y2="17.6" stroke="currentColor" stroke-width="2.25" stroke-linecap="round"/>
 </svg>
