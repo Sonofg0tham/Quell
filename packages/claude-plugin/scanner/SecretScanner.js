@@ -310,7 +310,7 @@ class SecretScanner {
                     continue;
                 }
                 // Skip URLs / file paths that aren't connection strings
-                if (/^https?:\/\//.test(token) && !/:\/\/[^:]+:[^@]+@/.test(token)) {
+                if (/^https?:\/\//.test(token) && !/:\/\/[^:@\s]{1,512}:[^@\s]{1,512}@/.test(token)) {
                     continue;
                 }
                 // Skip npm / yarn integrity hashes (sha256-, sha384-, sha512-)
