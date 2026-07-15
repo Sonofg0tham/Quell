@@ -2,6 +2,32 @@
 
 All notable changes to Quell will be documented in this file.
 
+## [2.8.1] - 2026-07-11
+
+A visual identity and hardening release. No detection changes.
+
+### 🎨 Visual identity
+- **New brand: the Sealed-Q.** Quell's icon is now a geometric ring whose
+  counter is blocked by a redaction bar in still-water aqua, echoing the
+  `{{SECRET_xxx}}` placeholders. Replaces the old magnifying-glass icon
+  across the extension icon, the sidebar icon, and the README, which now
+  carries the new wordmark and a social preview card. Brand tokens are
+  locked in `brand.md` and `brand-theme.css`.
+- Replaced the retired shields.io VS Marketplace badges with a working
+  static badge.
+
+### 🔒 Security hardening
+- **ReDoS guard.** The URL credential-detection regex now carries length
+  limits, closing a CodeQL polynomial-ReDoS alert.
+- **TOCTOU fixes.** AI Shield file reads no longer race between existence
+  check and read; missing files are handled by try/catch instead.
+- Removed unused imports flagged by CodeQL.
+
+### 🧰 Maintenance
+- Dependency and CI action bumps (@types/vscode 1.125, @types/node
+  20.19.43, checkout v7, setup-node v6, codeql-action v4,
+  action-gh-release v3).
+
 ## [2.8.0] - 2026-06-25
 
 A security-hardening release. Every change that touches a secret now fails safe,
