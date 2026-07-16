@@ -60,3 +60,45 @@ jobs:
           files: "quell-${{ steps.version.outputs.VERSION }}.vsix"
           draft: false
           prerelease: false
+
+      - name: Upload VSIX artifact
+        uses: actions/upload-artifact@v7
+        with:
+          name: vsix
+          path: "quell-${{ steps.version.outputs.VERSION }}.vsix"
+
+  publish-marketplaces:
+    # Publishes the VSIX to the VS Code Marketplace and Open VSX.
+    # Only runs once BOTH are true:
+    #   1. The repo variable MARKETPLACE_READY is 'true'
+    #      (gh variable set MARKETPLACE_READY --body true)
+    #   2. The VSCE_PAT and OVSX_PAT secrets exist:
+    #      - VSCE_PAT: Azure DevOps PAT with Marketplace > Manage scope
+    #        (https://dev.azure.com > User settings > Personal access tokens)
+    #      - OVSX_PAT: token from https://open-vsx.org/user-settings/tokens
+    # Until then this job is skipped so tag pushes never fail.
+    name: Publish to VS Marketplace + Open VSX
+    if: vars.MARKETPLACE_READY == 'true'
+    needs: build
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Setup Node.js
+        uses: actions/setup-node@v7
+        with:
+          node-version: '20'
+
+      - name: Download VSIX artifact
+        uses: actions/download-artifact@v8
+        with:
+          name: vsix
+
+      - name: Publish to VS Code Marketplace
+        env:
+          VSCE_PAT: ${{ secrets.VSCE_PAT }}
+        run: npx --yes @vscode/vsce publish --packagePath quell-*.vsix
+
+      - name: Publish to Open VSX
+        env:
+          OVSX_PAT: ${{ secrets.OVSX_PAT }}
+        run: npx --yes ovsx publish quell-*.vsix --pat "$OVSX_PAT"
