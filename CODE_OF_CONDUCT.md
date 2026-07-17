@@ -56,7 +56,7 @@ an individual is officially representing the community in public spaces.
 ## Enforcement
 
 Instances of abusive, harassing, or otherwise unacceptable behaviour may be
-reported to the project maintainer at **craig.mccart@outlook.com**.
+reported to the project maintainer by [opening a private security advisory](https://github.com/Sonofg0tham/Quell/security/advisories/new) or contacting [@Sonofg0tham](https://github.com/Sonofg0tham) on GitHub.
 All complaints will be reviewed and investigated promptly and fairly.
 
 All community leaders are obligated to respect the privacy and security of the
