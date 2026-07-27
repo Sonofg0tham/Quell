@@ -1,7 +1,7 @@
 {
   "name": "@sonofg0tham/quell-scanner",
-  "version": "0.2.0",
-  "description": "Offline secret-detection engine. Regex patterns plus Shannon entropy. Zero runtime dependencies. The core scanner behind the Quell VSCode extension.",
+  "version": "0.3.0",
+  "description": "Two offline engines for AI tooling: secret detection (regex + Shannon entropy) and prompt-injection detection (Unicode smuggling, bidi overrides, homoglyphs). Zero runtime dependencies. The core of the Quell VSCode extension.",
   "keywords": [
     "security",
     "secrets",
@@ -10,7 +10,13 @@
     "redaction",
     "entropy",
     "appsec",
-    "devsecops"
+    "devsecops",
+    "prompt-injection",
+    "ascii-smuggling",
+    "unicode-tags",
+    "trojan-source",
+    "llm-security",
+    "ai-security"
   ],
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
@@ -21,7 +27,7 @@
   ],
   "scripts": {
     "build": "tsc -p ./",
-    "test": "tsc -p ./tsconfig.test.json && node dist-test/test/SecretScanner.test.js",
+    "test": "tsc -p ./tsconfig.test.json && node dist-test/test/SecretScanner.test.js && node dist-test/test/PromptGuard.test.js && node dist-test/test/EnvRedactor.test.js",
     "prepublishOnly": "npm run build"
   },
   "repository": {

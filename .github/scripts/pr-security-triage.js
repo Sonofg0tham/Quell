@@ -57,11 +57,16 @@ async function callGemini(prompt) {
     return 'AI analysis unavailable (no API key configured).';
   }
 
+  // API key goes in a header, never the URL — query strings end up in proxy
+  // and error logs, request traces, and thrown error messages.
   const res = await fetch(
-    `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent?key=${GEMINI_API_KEY}`,
+    `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent`,
     {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: {
+        'Content-Type': 'application/json',
+        'x-goog-api-key': GEMINI_API_KEY,
+      },
       body: JSON.stringify({
         contents: [{ parts: [{ text: prompt }] }],
         generationConfig: { temperature: 0.2, maxOutputTokens: 1500 },
@@ -148,8 +153,14 @@ ${diff}
 
   const analysis = await callGemini(prompt);
 
-  const autoMergeSafe  = /auto-merge safe[\s\S]*?YES/i.test(analysis);
-  const riskIsLow      = /risk level[\s\S]*?LOW/i.test(analysis);
+  // Auto-merge gate — FAIL CLOSED. The prompt instructs the model to put the
+  // bare value on the line directly under each heading, so we anchor to the
+  // heading's own line and require the value to be ALONE on its line.
+  // A loose match like /risk level[\s\S]*?LOW/i would match "low" anywhere in
+  // the analysis ("follow", "lower", "allowed") and let a HIGH-risk PR merge.
+  // If the output deviates from the expected format at all, we do not merge.
+  const autoMergeSafe  = /^##\s*Auto-merge Safe\s*\r?\n\s*YES\s*$/im.test(analysis);
+  const riskIsLow      = /^##\s*Risk Level\s*\r?\n\s*LOW\s*$/im.test(analysis);
   const shouldMerge    = isDepBot && autoMergeSafe && riskIsLow;
 
   const autoMergeNote  = shouldMerge

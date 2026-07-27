@@ -1,5 +1,9 @@
 import * as vscode from 'vscode';
 import { Logger } from './Logger';
+import { SecretScanner, EnvRedactor, ENV_MASK } from '../packages/scanner/src';
+import { getConfig } from './configHelper';
+
+const MASK = ENV_MASK;
 
 /**
  * Manages .env file discovery and redaction.
@@ -51,26 +55,7 @@ export class EnvManager {
                 // Async file read — does NOT block the extension host
                 const rawBytes = await vscode.workspace.fs.readFile(uri);
                 const fileContent = Buffer.from(rawBytes).toString('utf-8');
-                const lines = fileContent.split(/\r?\n/);
-
-                for (const line of lines) {
-                    const trimmed = line.trim();
-
-                    // Preserve blank lines and comments
-                    if (!trimmed || trimmed.startsWith('#')) {
-                        combinedContent += line + '\n';
-                        continue;
-                    }
-
-                    const equalsIdx = trimmed.indexOf('=');
-                    if (equalsIdx > 0) {
-                        const key = trimmed.substring(0, equalsIdx).trim();
-                        // Expose key name, mask value
-                        combinedContent += `${key}=<HIDDEN_BY_QUELL>\n`;
-                    } else {
-                        combinedContent += line + ' # <Warning: Unparsed Line>\n';
-                    }
-                }
+                combinedContent += this.redactEnvContent(fileContent);
 
                 Logger.info(`ENV: Redacted ${relPath}`);
             } catch (error) {
@@ -80,6 +65,44 @@ export class EnvManager {
             }
         }
 
-        return combinedContent.trim();
+        // ── Defence in depth ──
+        // The line parser below is deliberately fail-closed, but this is the one
+        // feature whose entire promise is "real values never leave your machine",
+        // so the assembled output gets a second, independent pass through the
+        // secret scanner. Anything the parser somehow let through is caught here.
+        return this.backstop(combinedContent).trim();
+    }
+
+    /**
+     * Masks the values in a single .env file's content.
+     * Delegates to the standalone, CI-tested parser in the scanner package.
+     */
+    public static redactEnvContent(fileContent: string): string {
+        return EnvRedactor.redact(fileContent);
+    }
+
+    /**
+     * Final safety net: scan the assembled output and mask anything the scanner
+     * still recognises as a secret. Placeholders are collapsed to the same
+     * `<HIDDEN_BY_QUELL>` marker rather than vault-backed handles — this text is
+     * headed for a chat window, not an editor, so there is nothing to restore.
+     */
+    private static backstop(content: string): string {
+        try {
+            const { redactedText, secrets } = SecretScanner.redact(content, getConfig());
+            if (secrets.size === 0) { return content; }
+
+            Logger.warn(`ENV: Backstop scanner masked ${secrets.size} value(s) the .env parser did not catch.`);
+            let safe = redactedText;
+            for (const placeholder of secrets.keys()) {
+                safe = safe.split(placeholder).join(MASK);
+            }
+            return safe;
+        } catch (err) {
+            // If the backstop itself fails we must not fall back to emitting the
+            // unverified text — withhold the content instead.
+            Logger.error(`ENV: Backstop scan failed (${err instanceof Error ? err.message : String(err)}); withholding content.`);
+            return `# ${MASK} (Quell could not verify this content was safe to share)`;
+        }
     }
 }

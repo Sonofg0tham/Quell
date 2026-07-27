@@ -22,6 +22,18 @@
           }
         ]
       }
+    ],
+    "PostToolUse": [
+      {
+        "matcher": "Read|WebFetch|Fetch|WebSearch|NotebookRead|Glob|Grep",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node \"${CLAUDE_PLUGIN_ROOT}/hooks/posttooluse.js\"",
+            "timeout": 5
+          }
+        ]
+      }
     ]
   }
 }

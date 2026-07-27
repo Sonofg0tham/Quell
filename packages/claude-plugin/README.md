@@ -1,12 +1,15 @@
 # Quell — Claude Code plugin
 
-The point-of-use defence layer for Claude Code. Two hooks:
+The point-of-use defence layer for Claude Code. Three hooks, covering what you send,
+what the agent runs, and what the agent reads:
 
 - **`UserPromptSubmit`** scans every prompt you submit. If it finds a secret, the prompt
   is **blocked** (never sent to Claude) and you get a redacted version to resubmit.
 - **`PreToolUse`** (Bash) watches for the agent reading a secret off your machine and
-  sending it over the network. If it sees that shape it **asks you to confirm** before
-  the command runs.
+  sending it out. If it sees that shape it **asks you to confirm** before the command runs.
+- **`PostToolUse`** (Read, WebFetch, Grep, …) scans content the agent just read for
+  **prompt injection** — instructions hidden inside a file or web page that address the
+  model rather than you. On a hit it tells the model the content is data, not instruction.
 
 This is the third Quell surface. The other two:
 - [VSCode extension](https://marketplace.visualstudio.com/items?itemName=Sonofg0tham.quell)
@@ -17,7 +20,7 @@ This is the third Quell surface. The other two:
 **On every prompt** (`UserPromptSubmit`):
 
 1. Hook script reads the prompt from stdin.
-2. Quell's scanner runs over it (80+ regex patterns plus Shannon entropy analysis, the
+2. Quell's scanner runs over it (136 regex patterns plus Shannon entropy analysis, the
    same engine that powers the VSCode extension).
 3. **Clean prompt** → exits silently, prompt goes to Claude unchanged.
 4. **Secret detected** → exits with code 2, prompt is erased from context, and stderr
@@ -39,8 +42,32 @@ secret literals would flag every legitimate API call that puts a token in an aut
 it out", normal work stays silent and you only get prompted on the genuinely risky pattern.
 The trade-off: a command that inlines a raw secret literal and posts it out (with no
 file-read shape) is not caught. This is best-effort defence in depth, not a hard control —
-an agent can still read a file with an unusual command. Traffic to `localhost` is treated
-as local dev and never prompts.
+an agent can still read a file with an unusual command.
+
+"Sends it out" covers more than `curl`. It includes DNS-based exfiltration via `ping`,
+`dig`, `nslookup` and `host` (a secret encoded as a subdomain label), PowerShell transfer
+cmdlets, pushing to a git remote, and **two-step staging** — copying a secret to a bland
+temp path so a later command can ship it without ever naming a secret file.
+
+Traffic to loopback is treated as local dev and does not prompt, but that exemption is
+scoped to the **parsed destination host**, and every destination must be loopback for it
+to apply. An earlier version tested the whole command string for the word "localhost",
+which meant appending `# localhost` disabled the guard entirely. URL userinfo is stripped
+too, so `http://127.0.0.1@evil.example` is correctly read as external.
+
+**Before content reaches the model** (`PostToolUse`):
+
+1. Hook reads the content returned by a read-shaped tool.
+2. `PromptGuard` scans it for hidden characters (Unicode Tags-block smuggling, zero-width
+   runs, bidirectional overrides) and model-directed language.
+3. **Clean** → silent.
+4. **Critical or high finding** → returns `additionalContext` naming what was found,
+   including the **decoded** text of any smuggled payload, and reminding the model that
+   content from a file or web page carries no authority.
+
+This one **warns rather than blocks**, on purpose. Blocking file reads on a
+false positive would make the agent unusable, and once the model has been told to treat
+the content as hostile data it is far better placed than a regex to judge intent.
 
 ## What it doesn't do (yet)
 
@@ -53,6 +80,12 @@ as local dev and never prompts.
 - **No Write/Edit scanning.** `PreToolUse` covers Bash exfiltration only. Catching a secret
   being hard-coded into a source file is a deliberate later step, kept out for now so the
   hook stays quiet during legitimate config writes.
+- **The injection guard cannot un-read content.** By the time `PostToolUse` runs, the model
+  has already seen the tool output. The hook adds a warning alongside it; it cannot retract
+  it. That is a limit of the hook API, not a tuning choice.
+- **Fail-open by design.** Every hook exits 0 on any internal error. A hook that breaks
+  your agent is worse than one that occasionally misses, but it does mean a broken install
+  is silent — check `packages/claude-plugin/scanner/` exists if you want to be sure.
 
 ## Install (local development)
 
@@ -101,6 +134,13 @@ stepped aside. A hook that breaks your workflow is worse than a hook that
 occasionally misses a secret — the VSCode extension and good Git hygiene are your
 defence-in-depth.
 
+**One exception, deliberately.** If the bundled scanner cannot be *loaded* at all,
+that is a broken install rather than a transient error: every prompt would sail
+through unscanned while you carried on believing you were protected. In that case
+the hook still fails open, but it surfaces a visible warning **once per session**
+telling you protection is off and how to repair it. Once, not per prompt — a
+warning that fires every turn is one people learn to ignore.
+
 ## Updating the bundled scanner
 
 The compiled scanner lives at `scanner/` inside this plugin. To refresh it after
@@ -111,9 +151,14 @@ cd packages/claude-plugin
 npm run bundle-scanner
 ```
 
-This rebuilds the standalone scanner and copies the four `.js`/`.d.ts` artefacts
-into `packages/claude-plugin/scanner/`. We bundle rather than depending on the npm
-package so the plugin works with no `npm install` step from the user.
+This rebuilds the standalone scanner and copies every `.js`/`.d.ts` artefact into
+`packages/claude-plugin/scanner/`. It globs rather than naming files, because a
+hardcoded list silently drops any newly added module — which, thanks to fail-open,
+looks exactly like everything working. CI runs this and fails on any diff, so the
+bundle cannot drift from source.
+
+We bundle rather than depending on the npm package so the plugin works with no
+`npm install` step from the user.
 
 ## Licence
 

@@ -1,5 +1,5 @@
 import * as vscode from 'vscode';
-import { ScannerConfig, DEFAULT_CONFIG } from '../packages/scanner/src';
+import { ScannerConfig, DEFAULT_CONFIG, GuardConfig, DEFAULT_GUARD_CONFIG } from '../packages/scanner/src';
 import { Logger } from './Logger';
 
 const _warnedPatterns = new Set<string>();
@@ -28,4 +28,25 @@ export function getConfig(): ScannerConfig {
         whitelistPatterns: cfg.get<string[]>('whitelistPatterns', DEFAULT_CONFIG.whitelistPatterns),
         redactTestKeys: cfg.get<boolean>('redactTestKeys', DEFAULT_CONFIG.redactTestKeys),
     };
+}
+
+/**
+ * Assembles the inbound-threat (prompt injection) config.
+ * Kept separate from getConfig() because the two engines are independent:
+ * SecretScanner guards what leaves, PromptGuard guards what arrives.
+ */
+export function getGuardConfig(): GuardConfig {
+    const cfg = vscode.workspace.getConfiguration('quell');
+    return {
+        enableUnicodeChecks: cfg.get<boolean>('injection.detectHiddenCharacters', DEFAULT_GUARD_CONFIG.enableUnicodeChecks),
+        enableInstructionChecks: cfg.get<boolean>('injection.detectInstructionOverrides', DEFAULT_GUARD_CONFIG.enableInstructionChecks),
+        enableHomoglyphChecks: cfg.get<boolean>('injection.detectHomoglyphs', DEFAULT_GUARD_CONFIG.enableHomoglyphChecks),
+        maxFindings: DEFAULT_GUARD_CONFIG.maxFindings,
+        whitelistPatterns: cfg.get<string[]>('injection.whitelistPatterns', DEFAULT_GUARD_CONFIG.whitelistPatterns),
+    };
+}
+
+/** Master switch for all inbound-threat scanning. */
+export function isInjectionScanningEnabled(): boolean {
+    return vscode.workspace.getConfiguration('quell').get<boolean>('injection.enabled', true);
 }

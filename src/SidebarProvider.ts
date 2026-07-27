@@ -15,6 +15,8 @@ export class SidebarProvider implements vscode.WebviewViewProvider {
         'quell.restoreSecrets',
         'quell.showLog',
         'quell.clearVault',
+        'quell.scanForInjection',
+        'quell.stripHiddenCharacters',
     ]);
 
     private _view?: vscode.WebviewView;
@@ -23,6 +25,8 @@ export class SidebarProvider implements vscode.WebviewViewProvider {
     private scanResults: Array<{ file: string; count: number; types: string[] }> = [];
     private _aiShieldActive = false;
     private _clipboardWarning = false;
+    private _injectionFindings = 0;
+    private _injectionCritical = 0;
 
     constructor(private readonly _extensionUri: vscode.Uri) { }
 
@@ -61,6 +65,13 @@ export class SidebarProvider implements vscode.WebviewViewProvider {
         this.refresh();
     }
 
+    /** Records the outcome of an inbound (prompt-injection) scan. */
+    public recordInjectionScan(total: number, critical: number): void {
+        this._injectionFindings = total;
+        this._injectionCritical = critical;
+        this.refresh();
+    }
+
     public setAiShield(active: boolean): void {
         this._aiShieldActive = active;
         this.refresh();
@@ -90,19 +101,6 @@ export class SidebarProvider implements vscode.WebviewViewProvider {
         });
     }
 
-    private _escapeJs(text: string): string {
-        return text.replace(/[\\'"\n\r]/g, match => {
-            switch (match) {
-                case '\\': return '\\\\';
-                case "'": return "\\'";
-                case '"': return '\\"';
-                case '\n': return '\\n';
-                case '\r': return '\\r';
-                default: return match;
-            }
-        });
-    }
-
     private getHtmlForWebview(): string {
         const nonce = crypto.randomBytes(16).toString('base64');
         const config = vscode.workspace.getConfiguration('quell');
@@ -118,13 +116,12 @@ export class SidebarProvider implements vscode.WebviewViewProvider {
         if (this.scanResults.length > 0) {
             const items = this.scanResults.slice(0, 8).map(f => {
                 const htmlEscapedFile = this._escapeHtml(f.file);
-                const jsHtmlEscapedFile = this._escapeHtml(this._escapeJs(f.file));
                 return `
                 <div class="finding-item"
                     role="button"
                     tabindex="0"
-                    onclick="vscode.postMessage({type:'action', command:'quell.openFile', args:['${jsHtmlEscapedFile}']})"
-                    onkeydown="if(event.key === 'Enter' || event.key === ' ') { event.preventDefault(); vscode.postMessage({type:'action', command:'quell.openFile', args:['${jsHtmlEscapedFile}']}); }"
+                    data-quell-command="quell.openFile"
+                    data-quell-arg="${htmlEscapedFile}"
                 >
                     <span class="finding-file" title="${htmlEscapedFile}">${htmlEscapedFile}</span>
                     <span class="finding-count" title="${f.count} secret(s)">${f.count}</span>
@@ -172,12 +169,35 @@ export class SidebarProvider implements vscode.WebviewViewProvider {
         // ─── Auto-Sanitize state ──────────────────────────
         const autoSanitizeEnabled = config.get<boolean>('autoSanitizeClipboard', false);
 
+        // ─── Inbound threat state ─────────────────────────
+        // Secrets are the outbound risk; injected instructions are the inbound
+        // one. The dashboard shows both so it reflects the whole trust boundary
+        // rather than half of it.
+        const injectionEnabled = config.get<boolean>('injection.enabled', true);
+        const injectionStatus = !injectionEnabled
+            ? 'Disabled. Files are not checked for hidden instructions.'
+            : this._injectionCritical > 0
+                ? `${this._injectionCritical} critical finding(s) — content is addressing your AI directly.`
+                : this._injectionFindings > 0
+                    ? `${this._injectionFindings} low-confidence indicator(s). Nothing critical.`
+                    : 'Watching for hidden instructions in files and prompts.';
+
         return `<!DOCTYPE html>
         <html lang="en">
         <head>
             <meta charset="UTF-8">
             <meta name="viewport" content="width=device-width, initial-scale=1.0">
-            <meta http-equiv="Content-Security-Policy" content="default-src 'none'; img-src ${this._view?.webview.cspSource} https: data:; style-src 'nonce-${nonce}' ${this._view?.webview.cspSource}; script-src 'nonce-${nonce}';">
+            <!--
+              img-src is deliberately restricted to extension-local resources and
+              data: URIs. Allowing arbitrary https: images would hand this webview
+              a working outbound channel: an image URL is fetched automatically on
+              render, so anything the dashboard displays (file paths, detected
+              secret types) could be encoded into a request to a remote host. That
+              is the exact mechanism behind the 2025 Copilot image-exfiltration
+              disclosures, and a dashboard that lists your secrets is the last
+              place that should be reachable.
+            -->
+            <meta http-equiv="Content-Security-Policy" content="default-src 'none'; img-src ${this._view?.webview.cspSource} data:; style-src 'nonce-${nonce}' ${this._view?.webview.cspSource}; script-src 'nonce-${nonce}'; connect-src 'none'; form-action 'none'; base-uri 'none';">
             <title>Quell</title>
             <style nonce="${nonce}">
                 @keyframes pulseGlow {
@@ -351,6 +371,27 @@ export class SidebarProvider implements vscode.WebviewViewProvider {
                     border-radius: 4px;
                     background: rgba(251,191,36,0.08);
                 }
+                .kbd-cta {
+                    font-family: var(--mono);
+                    font-size: 9.5px;
+                    color: rgba(96,165,250,0.9);
+                    border: none;
+                    background: rgba(37,99,235,0.12);
+                    padding: 2px 6px;
+                    border-radius: 4px;
+                    letter-spacing: 0.5px;
+                }
+                .kbd-tool {
+                    font-family: var(--mono);
+                    font-size: 9.5px;
+                    color: var(--muted);
+                    background: var(--surface);
+                    padding: 2px 6px;
+                    border-radius: 4px;
+                    border: 1px solid var(--glass-border);
+                    margin-left: auto;
+                    letter-spacing: 0.5px;
+                }
 
                 /* ── AI Shield card ─────────────────── */
                 .shield-card {
@@ -367,6 +408,9 @@ export class SidebarProvider implements vscode.WebviewViewProvider {
                 }
                 .shield-card.shield-off {
                     background: var(--surface);
+                }
+                .shield-card.stacked {
+                    margin-top: 8px;
                 }
                 .shield-header {
                     display: flex;
@@ -514,6 +558,7 @@ export class SidebarProvider implements vscode.WebviewViewProvider {
                 .btn-tool.danger svg { color: var(--rose); }
                 .btn-tool.danger:hover { border-color: rgba(251,113,133,0.5); box-shadow: 0 4px 12px rgba(251,113,133,0.15); }
                 .btn-tool.full-width { grid-column: 1 / -1; }
+                .btn-tool.btn-block { width: 100%; justify-content: center; }
 
                 /* ── Stats row ──────────────────────── */
                 .stats-row {
@@ -552,6 +597,7 @@ export class SidebarProvider implements vscode.WebviewViewProvider {
                     font-weight: 700;
                     letter-spacing: -0.5px;
                 }
+                .stat-num-alert { color: var(--rose); }
                 .stat-lbl {
                     font-size: 9px;
                     color: var(--muted);
@@ -698,6 +744,8 @@ export class SidebarProvider implements vscode.WebviewViewProvider {
                     color: var(--accent);
                     font-weight: 700;
                 }
+                .config-val.val-on { color: var(--teal); }
+                .config-val.val-off { color: var(--muted); }
 
                 /* ── Divider ───────────────────────── */
                 .section-divider {
@@ -740,13 +788,13 @@ export class SidebarProvider implements vscode.WebviewViewProvider {
                             aria-pressed="${this._aiShieldActive ? 'true' : 'false'}"
                             aria-describedby="ai-shield-desc"
                             title="${this._aiShieldActive ? 'Disable AI Indexing Shield' : 'Enable AI Indexing Shield'}"
-                            onclick="vscode.postMessage({type:'action', command:'${shieldCmd}'})">${shieldLabel}</button>
+                            data-quell-command="${shieldCmd}">${shieldLabel}</button>
                     </div>
                     <div class="shield-desc" id="ai-shield-desc">${shieldDesc}</div>
                 </div>
 
                 <!-- ── Clipboard Auto-Sanitize card ────── -->
-                <div class="shield-card ${autoSanitizeEnabled ? 'shield-on' : 'shield-off'}" style="margin-top: 8px;">
+                <div class="shield-card stacked ${autoSanitizeEnabled ? 'shield-on' : 'shield-off'}">
                     <div class="shield-header">
                         <div class="shield-label-group">
                             <span class="shield-dot ${autoSanitizeEnabled ? 'active' : 'inactive'}"></span>
@@ -756,23 +804,38 @@ export class SidebarProvider implements vscode.WebviewViewProvider {
                             aria-pressed="${autoSanitizeEnabled ? 'true' : 'false'}"
                             aria-describedby="auto-sanitize-desc"
                             title="${autoSanitizeEnabled ? 'Disable Clipboard Auto-Sanitize' : 'Enable Clipboard Auto-Sanitize'}"
-                            onclick="vscode.postMessage({type:'action', command:'quell.toggleAutoSanitize'})">${autoSanitizeEnabled ? 'ON' : 'OFF'}</button>
+                            data-quell-command="quell.toggleAutoSanitize">${autoSanitizeEnabled ? 'ON' : 'OFF'}</button>
                     </div>
                     <div class="shield-desc" id="auto-sanitize-desc">${autoSanitizeEnabled ? 'Actively securing copied secrets.' : 'Warns only when secrets are copied.'}</div>
+                </div>
+
+                <!-- ── Inbound threat card ─────────────── -->
+                <div class="shield-card stacked ${injectionEnabled ? (this._injectionCritical > 0 ? 'shield-off' : 'shield-on') : 'shield-off'}">
+                    <div class="shield-header">
+                        <div class="shield-label-group">
+                            <span class="shield-dot ${injectionEnabled && this._injectionCritical === 0 ? 'active' : 'inactive'}"></span>
+                            <span class="shield-title">Prompt Injection Guard</span>
+                        </div>
+                        <button class="toggle-btn ${injectionEnabled ? 'on' : 'off'}"
+                            aria-describedby="injection-desc"
+                            title="Scan the workspace for hidden instructions aimed at your AI assistant"
+                            data-quell-command="quell.scanForInjection">SCAN</button>
+                    </div>
+                    <div class="shield-desc" id="injection-desc">${injectionStatus}</div>
                 </div>
 
                 <div class="section-divider"></div>
 
                 <!-- ── Primary actions ─────────────────── -->
                 <div class="section">
-                    <button class="btn-cta" title="Copy selection with secrets securely redacted" onclick="vscode.postMessage({type:'action', command:'quell.copyRedacted'})">
+                    <button class="btn-cta" title="Copy selection with secrets securely redacted" data-quell-command="quell.copyRedacted">
                         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
-                        Copy Redacted  <kbd style="font-family:var(--mono);font-size:9.5px;color:rgba(96,165,250,0.9);border:none;background:rgba(37,99,235,0.12);padding:2px 6px;border-radius:4px;letter-spacing:0.5px;">⇧C</kbd>
+                        Copy Redacted  <kbd class="kbd-cta">⇧C</kbd>
                     </button>
-                    <button class="btn-tool" title="Paste clipboard text with secrets automatically stripped" onclick="vscode.postMessage({type:'action', command:'quell.sanitizedPaste'})" style="width:100%;justify-content:center;">
+                    <button class="btn-tool btn-block" title="Paste clipboard text with secrets automatically stripped" data-quell-command="quell.sanitizedPaste">
                         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"></path><rect x="8" y="2" width="8" height="4" rx="1" ry="1"></rect></svg>
                         <span>Sanitized Paste</span>
-                        <kbd style="font-family:var(--mono);font-size:9.5px;color:var(--muted);background:var(--surface);padding:2px 6px;border-radius:4px;border:1px solid var(--glass-border);margin-left:auto;letter-spacing:0.5px;">⇧V</kbd>
+                        <kbd class="kbd-tool">⇧V</kbd>
                     </button>
                 </div>
 
@@ -782,23 +845,23 @@ export class SidebarProvider implements vscode.WebviewViewProvider {
                 <div class="section">
                     <div class="section-title">Analysis</div>
                     <div class="tool-grid">
-                        <button class="btn-tool" title="Scan entire workspace for secrets" onclick="vscode.postMessage({type:'action', command:'quell.scanWorkspace'})">
+                        <button class="btn-tool" title="Scan entire workspace for secrets" data-quell-command="quell.scanWorkspace">
                             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
                             <span>Scan All</span>
                         </button>
-                        <button class="btn-tool" title="Redact all secrets in the active file" onclick="vscode.postMessage({type:'action', command:'quell.redactActiveFile'})">
+                        <button class="btn-tool" title="Redact all secrets in the active file" data-quell-command="quell.redactActiveFile">
                             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line></svg>
                             <span>Redact File</span>
                         </button>
-                        <button class="btn-tool" title="Restore redacted secrets in the active file" onclick="vscode.postMessage({type:'action', command:'quell.restoreSecrets'})">
+                        <button class="btn-tool" title="Restore redacted secrets in the active file" data-quell-command="quell.restoreSecrets">
                             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 2l-2 2m-7.61 7.61a5.5 5.5 0 1 1-7.778 7.778 5.5 5.5 0 0 1 7.777-7.777zm0 0L15.5 7.5m0 0l3 3L22 7l-3-3m-3.5 3.5L19 4"></path></svg>
                             <span>Restore</span>
                         </button>
-                        <button class="btn-tool" title="Show Quell event log" onclick="vscode.postMessage({type:'action', command:'quell.showLog'})">
+                        <button class="btn-tool" title="Show Quell event log" data-quell-command="quell.showLog">
                             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="4 7 4 4 20 4 20 7"></polyline><line x1="9" y1="20" x2="15" y2="20"></line><line x1="12" y1="4" x2="12" y2="20"></line></svg>
                             <span>Show Log</span>
                         </button>
-                        <button class="btn-tool danger full-width" title="Delete all stored secrets from the OS Keychain" onclick="vscode.postMessage({type:'action', command:'quell.clearVault'})">
+                        <button class="btn-tool danger full-width" title="Delete all stored secrets from the OS Keychain" data-quell-command="quell.clearVault">
                             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"></path><path d="M10 11v6"></path><path d="M14 11v6"></path><path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"></path></svg>
                             <span>Clear Vault</span>
                         </button>
@@ -816,7 +879,7 @@ export class SidebarProvider implements vscode.WebviewViewProvider {
                             <div class="stat-lbl">Scans</div>
                         </div>
                         <div class="stat-box ${this.sessionSecrets > 0 ? 'accent-rose' : ''}">
-                            <div class="stat-num" style="color:${this.sessionSecrets > 0 ? 'var(--rose)' : 'inherit'}">${this.sessionSecrets}</div>
+                            <div class="stat-num${this.sessionSecrets > 0 ? ' stat-num-alert' : ''}">${this.sessionSecrets}</div>
                             <div class="stat-lbl">Detected</div>
                         </div>
                     </div>
@@ -836,13 +899,38 @@ export class SidebarProvider implements vscode.WebviewViewProvider {
                         </div>
                         <div class="config-row">
                             <span class="config-key">Entropy Scanner</span>
-                            <span class="config-val" style="color:${entropyEnabled ? 'var(--teal)' : 'var(--muted)'}">${entropyEnabled ? 'Active' : 'Off'}</span>
+                            <span class="config-val ${entropyEnabled ? 'val-on' : 'val-off'}">${entropyEnabled ? 'Active' : 'Off'}</span>
                         </div>
                     </div>
                 </div>
 
             </div>
-            <script nonce="${nonce}">const vscode = acquireVsCodeApi();</script>
+            <script nonce="${nonce}">
+                const vscode = acquireVsCodeApi();
+                function postQuellAction(el) {
+                    const command = el.getAttribute('data-quell-command');
+                    if (!command) { return; }
+                    const arg = el.getAttribute('data-quell-arg');
+                    if (arg !== null) {
+                        vscode.postMessage({ type: 'action', command: command, args: [arg] });
+                    } else {
+                        vscode.postMessage({ type: 'action', command: command });
+                    }
+                }
+                document.addEventListener('click', (event) => {
+                    if (!(event.target instanceof Element)) { return; }
+                    const el = event.target.closest('[data-quell-command]');
+                    if (el) { postQuellAction(el); }
+                });
+                document.addEventListener('keydown', (event) => {
+                    if (event.key !== 'Enter' && event.key !== ' ') { return; }
+                    if (!(event.target instanceof Element)) { return; }
+                    const el = event.target.closest('[data-quell-command]');
+                    if (!el || el.tagName === 'BUTTON') { return; }
+                    event.preventDefault();
+                    postQuellAction(el);
+                });
+            </script>
         </body>
         </html>`;
     }

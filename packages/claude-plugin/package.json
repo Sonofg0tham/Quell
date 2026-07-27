@@ -4,8 +4,8 @@
   "private": true,
   "description": "Claude Code plugin: blocks prompts that contain secrets (UserPromptSubmit) and asks before a tool call reads a secret and sends it over the network (PreToolUse).",
   "scripts": {
-    "bundle-scanner": "cd ../scanner && npm run build && cd ../claude-plugin && node -e \"['SecretScanner.js','SecretScanner.d.ts','index.js','index.d.ts'].forEach(f => require('fs').copyFileSync('../scanner/dist/'+f, 'scanner/'+f))\"",
-    "test": "node test/redact.test.js && node test/pretooluse.test.js"
+    "bundle-scanner": "cd ../scanner && npm run build && cd ../claude-plugin && node -e \"require('fs').readdirSync('../scanner/dist').filter(f => /\\.(js|d\\.ts)$/.test(f)).forEach(f => require('fs').copyFileSync('../scanner/dist/'+f, 'scanner/'+f))\"",
+    "test": "node test/redact.test.js && node test/pretooluse.test.js && node test/posttooluse.test.js"
   },
   "license": "MIT",
   "author": "Craig McCart",

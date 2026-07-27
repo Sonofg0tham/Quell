@@ -1,8 +1,8 @@
 {
     "name": "quell",
     "displayName": "Quell",
-    "description": "Stop API keys and passwords leaking into AI tools. Quell redacts secrets before they reach Copilot, Cursor, or Windsurf — 100% offline, zero telemetry.",
-    "version": "2.8.1",
+    "description": "Stop secrets leaking into AI tools — and stop hidden instructions reaching them. Quell redacts API keys before they hit Copilot, Cursor or Windsurf, and flags prompt injection hiding in your files. 100% offline, zero telemetry.",
+    "version": "2.9.0",
     "publisher": "Sonofg0tham",
     "icon": "assets/icon.png",
     "galleryBanner": {
@@ -154,6 +154,18 @@
                 "title": "Toggle Auto-Sanitize Clipboard",
                 "category": "Quell",
                 "icon": "$(clippy)"
+            },
+            {
+                "command": "quell.stripHiddenCharacters",
+                "title": "Strip Hidden Characters from Active File",
+                "category": "Quell",
+                "icon": "$(eye-closed)"
+            },
+            {
+                "command": "quell.scanForInjection",
+                "title": "Scan Workspace for Prompt Injection",
+                "category": "Quell",
+                "icon": "$(telescope)"
             }
         ],
         "keybindings": [
@@ -294,6 +306,39 @@
                     "default": false,
                     "description": "When enabled, officially-published test/demo credentials (e.g. AKIAIOSFODNN7EXAMPLE) are treated as real secrets and redacted. Disabled by default because these values are intentionally safe — they appear in READMEs, tutorials, and Quell's own demo file.",
                     "order": 9
+                },
+                "quell.injection.enabled": {
+                    "type": "boolean",
+                    "default": true,
+                    "description": "Scan files for prompt-injection threats — hidden instructions aimed at your AI assistant rather than at you. This is the inbound counterpart to secret redaction.",
+                    "order": 10
+                },
+                "quell.injection.detectHiddenCharacters": {
+                    "type": "boolean",
+                    "default": true,
+                    "description": "Detect invisible text: Unicode Tags-block smuggling, zero-width characters, bidirectional overrides (Trojan Source), and stray variation selectors. Deterministic, with effectively no false positives — legitimate emoji sequences are preserved.",
+                    "order": 11
+                },
+                "quell.injection.detectInstructionOverrides": {
+                    "type": "boolean",
+                    "default": true,
+                    "description": "Detect language aimed at a model rather than a reader — 'ignore previous instructions', 'do not tell the user', embedded exfiltration commands. Heuristic, so it can fire on security documentation that quotes these phrases.",
+                    "order": 12
+                },
+                "quell.injection.detectHomoglyphs": {
+                    "type": "boolean",
+                    "default": true,
+                    "description": "Detect words mixing Latin with lookalike Cyrillic or Greek characters, used to disguise package names, domains, and identifiers.",
+                    "order": 13
+                },
+                "quell.injection.whitelistPatterns": {
+                    "type": "array",
+                    "default": [],
+                    "description": "Regex patterns for content that should never be flagged as prompt injection (e.g. your own security documentation).",
+                    "items": {
+                        "type": "string"
+                    },
+                    "order": 14
                 }
             }
         },
@@ -323,6 +368,19 @@
                         },
                         "completionEvents": [
                             "onCommand:quell.redactActiveFile"
+                        ]
+                    },
+                    {
+                        "id": "quell.injection",
+                        "title": "Catch what you can't see",
+                        "description": "Secrets leaking out is only half the problem. The other half is instructions coming in — text hidden inside a file that speaks to your AI assistant instead of to you, using characters that render as nothing.\n\nQuell flags those in red, decodes the hidden text so you can read it, and strips it in one click.\n\n[Scan for hidden instructions](command:quell.scanForInjection)",
+                        "media": {
+                            "svg": "assets/quell-sidebar.svg",
+                            "altText": "Prompt injection guard"
+                        },
+                        "completionEvents": [
+                            "onCommand:quell.scanForInjection",
+                            "onCommand:quell.stripHiddenCharacters"
                         ]
                     },
                     {
@@ -368,7 +426,7 @@
         "vscode:prepublish": "npm run compile",
         "compile": "tsc -p ./",
         "watch": "tsc -watch -p ./",
-        "test": "tsc -p ./tsconfig.test.json && node out/packages/scanner/src/test/SecretScanner.test.js"
+        "test": "tsc -p ./tsconfig.test.json && node out/packages/scanner/src/test/SecretScanner.test.js && node out/packages/scanner/src/test/PromptGuard.test.js && node out/packages/scanner/src/test/EnvRedactor.test.js"
     },
     "devDependencies": {
         "@types/node": "20.x",

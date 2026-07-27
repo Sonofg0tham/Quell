@@ -27,6 +27,8 @@
 'use strict';
 
 const path = require('path');
+const fs = require('fs');
+const os = require('os');
 
 const FAIL_OPEN_EXIT = 0;
 const BLOCK_EXIT = 2;
@@ -38,6 +40,35 @@ function failOpen(reason) {
     process.exit(FAIL_OPEN_EXIT);
 }
 
+/**
+ * Fail-open keeps the agent working, but it has a nasty edge: if the bundled
+ * scanner is missing or broken, every prompt sails through unscanned and the
+ * only trace is a stderr line Claude Code discards on exit 0. The user goes on
+ * believing they are protected. That is the worst possible failure mode for a
+ * security tool.
+ *
+ * So an install-integrity failure — as opposed to a transient one — surfaces
+ * once per session as visible context. Once, not every prompt: a warning that
+ * fires on every turn is a warning people learn to ignore.
+ */
+function warnBrokenInstallOnce(sessionId, reason) {
+    try {
+        const key = String(sessionId || 'nosession').replace(/[^A-Za-z0-9_-]/g, '');
+        const marker = path.join(os.tmpdir(), `quell-install-warned-${key}`);
+        if (fs.existsSync(marker)) { return; }
+        fs.writeFileSync(marker, String(Date.now()));
+
+        process.stdout.write(
+            '⚠️ Quell is installed but its scanner could not be loaded, so prompts are ' +
+            'NOT being checked for secrets. Reason: ' + reason + '. ' +
+            'Run `npm run bundle-scanner` in packages/claude-plugin to repair the install. ' +
+            'Please tell the user this, once.\n'
+        );
+    } catch {
+        // Never let the warning path itself break the hook.
+    }
+}
+
 let raw = '';
 process.stdin.setEncoding('utf8');
 process.stdin.on('data', (chunk) => { raw += chunk; });
@@ -45,9 +76,11 @@ process.stdin.on('error', (err) => failOpen(`stdin error: ${err.message}`));
 
 process.stdin.on('end', () => {
     let prompt;
+    let sessionId;
     try {
         const input = JSON.parse(raw || '{}');
         prompt = typeof input.prompt === 'string' ? input.prompt : '';
+        sessionId = input.session_id;
     } catch (err) {
         return failOpen(`bad stdin JSON: ${err.message}`);
     }
@@ -63,6 +96,9 @@ process.stdin.on('end', () => {
         SecretScanner = mod.SecretScanner;
         DEFAULT_CONFIG = mod.DEFAULT_CONFIG;
     } catch (err) {
+        // A missing scanner is a broken install, not a transient blip — say so
+        // rather than silently passing every prompt through unchecked.
+        warnBrokenInstallOnce(sessionId, `scanner load failed: ${err.message}`);
         return failOpen(`scanner load failed: ${err.message}`);
     }
 

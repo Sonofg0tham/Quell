@@ -51,6 +51,20 @@ function assertAnySecretDetected(input: string, config?: ScannerConfig): void {
     assert.ok(result.redactedText.includes('{{SECRET_'), 'Expected redacted text to contain a placeholder');
 }
 
+/**
+ * Joins the parts of a credential fixture at runtime.
+ *
+ * Every fixture in this file is fake, but some are realistic enough that
+ * GitHub's push protection classifies them as live credentials and blocks the
+ * push. Keeping the value out of the file as a single literal satisfies the
+ * scanner without weakening the test, which still sees the full string. An
+ * occupational hazard of maintaining a secret-detection test suite: the better
+ * the fixtures, the more they look like the real thing.
+ */
+function fixture(...parts: string[]): string {
+    return parts.join('');
+}
+
 function assertNoSecrets(input: string, config?: ScannerConfig): void {
     const result = SecretScanner.redact(input, config || DEFAULT_CONFIG);
     assert.strictEqual(result.secrets.size, 0, `Expected no secrets but found ${result.secrets.size}: [${Array.from(result.detectedTypes).join(', ')}]`);
@@ -71,7 +85,16 @@ test('detects AWS Access Key ID (AKIA)', () => {
 });
 
 test('detects AWS Access Key ID (ASIA)', () => {
-    assertSecretDetected('ASIA1234567890ABCDEF', 'AWS Access Key ID');
+    // Key body is base32 ([A-Z2-7]) — digits 0, 1, 8, 9 never appear in real key IDs.
+    assertSecretDetected('ASIA234567ABCDEFGHIJ', 'AWS Access Key ID');
+});
+
+test('detects AWS Secret Access Key (uppercase quoted .env form)', () => {
+    assertSecretDetected(
+        'AWS_SECRET_ACCESS_KEY="wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY"',
+        'AWS Secret Access Key',
+        { ...DEFAULT_CONFIG, redactTestKeys: true }
+    );
 });
 
 test('detects AWS MWS key', () => {
@@ -96,6 +119,32 @@ test('detects Google OAuth Client Secret', () => {
     assertAnySecretDetected('GOCSPX-aBcDeFgHiJkLmNoPqRsTuVwX');
 });
 
+test('detects Google OAuth Refresh Token (1// prefix)', () => {
+    assertSecretDetected(
+        'GOOGLE_REFRESH_TOKEN=1//0gAbCdEfGhTUVWXYZ123456789abcdef',
+        'Google OAuth Refresh Token'
+    );
+});
+
+
+// ── Azure & Other Clouds ─────────────
+console.log('\n☁️  Azure & Other Cloud Patterns:');
+
+test('detects Azure AD client secret', () => {
+    assertSecretDetected(
+        'client secret: Iiv8Q~aBcDeFgHiJkLmNoPqRsTuVwXyZ.01234',
+        'Azure AD Client Secret'
+    );
+});
+
+test('detects Alibaba AccessKey ID', () => {
+    assertSecretDetected('LTAIA1b2C3d4e5A1b2C3d4e5', 'Alibaba AccessKey ID');
+});
+
+test('detects Tencent Cloud SecretId', () => {
+    assertSecretDetected(fixture('AK', 'IDA1b2C3d4e5A1b2C3d4e5A1b2C3d4e5Zz'), 'Tencent Cloud SecretId');
+});
+
 
 // ── AI/ML Providers ──────────────────
 console.log('\n🤖 AI/ML Provider Patterns:');
@@ -112,6 +161,17 @@ test('detects Anthropic API Key', () => {
         'sk-ant-abcdefghijklmnopqrstuvwxyz12345678901234567890',
         'Anthropic API Key'
     );
+});
+
+test('detects OpenAI API Key (admin)', () => {
+    assertSecretDetected(
+        fixture('sk-', 'admin-', 'Ab12Cd34Ef56Gh78Ij90Kl12Mn34Op56Qr78St90T3BlbkFJAb12Cd34Ef56Gh78'),
+        'OpenAI API Key (Admin)'
+    );
+});
+
+test('detects Amazon Bedrock API key', () => {
+    assertSecretDetected('ABSK' + 'A1b2C3d4e5'.repeat(11), 'Amazon Bedrock API Key');
 });
 
 test('detects Hugging Face Token', () => {
@@ -152,6 +212,42 @@ test('detects LangSmith API Key', () => {
     assertSecretDetected(sample, 'LangSmith API Key');
 });
 
+test('detects Pinecone API Key', () => {
+    assertSecretDetected('pcsk_' + 'AbCd1234'.repeat(5), 'Pinecone API Key');
+});
+
+test('detects Fireworks API Key', () => {
+    assertSecretDetected('fw_' + 'A1b2C3d4e5'.repeat(3), 'Fireworks API Key');
+});
+
+test('detects Cerebras API Key', () => {
+    assertSecretDetected('csk-' + 'a1b2c3d4e5'.repeat(4), 'Cerebras API Key');
+});
+
+test('detects ElevenLabs API Key', () => {
+    assertSecretDetected('sk_' + '0123456789abcdef'.repeat(3), 'ElevenLabs API Key');
+});
+
+test('Stripe sk_live key is still typed as Stripe, not ElevenLabs', () => {
+    // ElevenLabs (sk_ + hex) and Stripe (sk_live_/sk_test_) prefixes overlap on
+    // 'sk_' — prove the hex-only ElevenLabs rule never claims a Stripe key.
+    const result = SecretScanner.redact(fixture('sk_', 'live_', '0123456789abcdef0123456789abcdef01234567'), DEFAULT_CONFIG);
+    assert.ok(result.detectedTypes.has('Stripe Secret Key'), 'Expected Stripe Secret Key type');
+    assert.ok(!result.detectedTypes.has('ElevenLabs API Key'), 'ElevenLabs rule must not claim a Stripe key');
+});
+
+test('detects LlamaCloud API Key', () => {
+    assertSecretDetected('llx-' + 'A1b2C3d4e5'.repeat(5), 'LlamaCloud API Key');
+});
+
+test('detects Vercel AI Gateway Key', () => {
+    assertSecretDetected('vck_' + 'A1b2C3d4e5'.repeat(3), 'Vercel AI Gateway Key');
+});
+
+test('detects Together AI API Key', () => {
+    assertSecretDetected('tgp_v1_' + 'A1b2C3d4e5'.repeat(5), 'Together AI API Key');
+});
+
 test('does not flag short sk-or-v1- prefix', () => {
     assertNoSecrets('sk-or-v1-tooshort');
 });
@@ -170,6 +266,10 @@ test('detects Stripe Secret Key (test)', () => {
 
 test('detects Stripe Publishable Key', () => {
     assertSecretDetected('pk_test_abcdefghijklmnopqrstuvwx', 'Stripe Publishable Key');
+});
+
+test('detects Stripe Webhook Secret', () => {
+    assertSecretDetected('whsec_' + 'A1b2C3d4e5'.repeat(4), 'Stripe Webhook Secret');
 });
 
 test('detects Square Access Token', () => {
@@ -200,6 +300,39 @@ test('detects GitHub Fine-grained PAT with varying segment lengths', () => {
 
 test('detects GitLab PAT', () => {
     assertSecretDetected('glpat-abcdefghij1234567890', 'GitLab Personal Access Token');
+});
+
+test('detects modern routable GitLab PAT in full (no tail leak)', () => {
+    // Routable PATs are longer than 20 chars and end in a .{9-char} CRC suffix.
+    // The old {20} bound redacted only the first 20 chars and leaked the rest.
+    const pat = 'glpat-AbCdEfGhIjKlMnOpQrStUvWxYz1.01ab2cd3e';
+    const result = SecretScanner.redact(pat, DEFAULT_CONFIG);
+    assert.ok(result.detectedTypes.has('GitLab Personal Access Token'), 'Expected GitLab PAT type');
+    assert.ok(!result.redactedText.includes('01ab2cd3e'), `PAT tail leaked: ${result.redactedText}`);
+});
+
+
+// ── Dev Tooling ──────────────────────
+console.log('\n🛠️  Dev Tooling Patterns:');
+
+test('detects Atlassian API Token', () => {
+    assertSecretDetected('ATATT3' + 'aBcDeF'.repeat(31), 'Atlassian API Token');
+});
+
+test('detects CircleCI Personal Access Token', () => {
+    assertSecretDetected('CCIPAT_AbCd1234EfGh5678_' + 'a1b2c3d4'.repeat(5), 'CircleCI Personal Access Token');
+});
+
+test('detects Docker Hub Token', () => {
+    assertSecretDetected('dckr_pat_' + 'A1b2C3d4e5'.repeat(3), 'Docker Hub Token');
+});
+
+test('detects Sourcegraph Access Token', () => {
+    assertSecretDetected('sgp_0123456789abcdef_' + '0123456789abcdef'.repeat(2) + 'a1b2c3d4', 'Sourcegraph Access Token');
+});
+
+test('detects SonarQube Token', () => {
+    assertSecretDetected('squ_' + 'a1b2c3d4e5'.repeat(4), 'SonarQube Token');
 });
 
 
@@ -233,6 +366,27 @@ test('detects Discord Webhook', () => {
     );
 });
 
+test('detects Discord Bot Token with O prefix', () => {
+    assertSecretDetected(
+        'O' + 'Tk3Mzc4NTQ0'.repeat(3) + '.GaBcDe.' + 'aBcDeFgHi'.repeat(3),
+        'Discord Bot Token'
+    );
+});
+
+test('detects Telegram Bot Token', () => {
+    // Official example token from the Telegram Bot API docs.
+    assertSecretDetected('110201543:AAHdqTcvCH1vGWJxfSeofSAs0K5PALDsaw', 'Telegram Bot Token');
+});
+
+test('does not flag digits:base64 that is not a Telegram token', () => {
+    // Secret segment must start 'AA' — arbitrary digits:base64ish must NOT match.
+    assertNoSecrets('1721480212:dGhpc0lzTm90QVRlbGVncmFtVG9rZW5zdHJ');
+});
+
+test('detects X (Twitter) Bearer Token', () => {
+    assertSecretDetected('A'.repeat(21) + 'AbCd1234'.repeat(10), 'X (Twitter) Bearer Token');
+});
+
 
 // ── Email Services ───────────────────
 console.log('\n✉️  Email Service Patterns:');
@@ -262,8 +416,20 @@ test('detects Resend API key', () => {
     );
 });
 
+test('detects segmented Resend API key', () => {
+    // Modern Resend keys are segmented: re_<short>_<long>
+    assertSecretDetected('re_AbCd1234_efGhIjKlMnOpQrStUvWx', 'Resend API Key');
+});
+
 test('does not flag short re_ string (too short)', () => {
     assertNoSecrets('re_toolshort');
+});
+
+test('detects Brevo API key', () => {
+    assertSecretDetected(
+        'xkeysib-' + '0123456789abcdef'.repeat(4) + '-A1b2C3d4E5f6G7h8',
+        'Brevo API Key'
+    );
 });
 
 
@@ -291,30 +457,65 @@ test('detects Basic Auth Credentials (fixed regex)', () => {
     );
 });
 
+test('does not flag camelCase prose after Bearer', () => {
+    // Pure-letter identifiers are prose, not tokens — real credentials contain
+    // at least one digit, '+', '/' or '='.
+    assertNoSecrets('Bearer TokenAuthenticationScheme');
+});
+
+test('does not flag camelCase prose after Basic', () => {
+    assertNoSecrets('the Basic AuthenticationProvider class');
+});
+
 
 // ── Cryptographic Keys ──────────────
 console.log('\n🔐 Cryptographic Key Patterns:');
 
-test('detects RSA Private Key', () => {
-    assertSecretDetected('-----BEGIN RSA PRIVATE KEY-----', 'RSA Private Key');
+test('detects RSA Private Key header', () => {
+    assertSecretDetected('-----BEGIN RSA PRIVATE KEY-----', 'Private Key Block');
 });
 
-test('detects OpenSSH Private Key', () => {
-    assertSecretDetected('-----BEGIN OPENSSH PRIVATE KEY-----', 'OpenSSH Private Key');
+test('detects OpenSSH Private Key header', () => {
+    assertSecretDetected('-----BEGIN OPENSSH PRIVATE KEY-----', 'Private Key Block');
 });
 
-test('detects Generic Private Key', () => {
-    assertSecretDetected('-----BEGIN PRIVATE KEY-----', 'Generic Private Key');
+test('detects Generic Private Key header', () => {
+    assertSecretDetected('-----BEGIN PRIVATE KEY-----', 'Private Key Block');
 });
 
-test('detects PGP Private Key Block', () => {
-    assertSecretDetected('-----BEGIN PGP PRIVATE KEY BLOCK-----', 'PGP Private Key Block');
+test('detects PGP Private Key Block header', () => {
+    assertSecretDetected('-----BEGIN PGP PRIVATE KEY BLOCK-----', 'Private Key Block');
 });
 
-test('detects Encrypted Private Key', () => {
+test('detects Encrypted Private Key header', () => {
     // PKCS#8 encrypted private keys use a distinct header that the six specific
     // patterns did not cover.
-    assertSecretDetected('-----BEGIN ENCRYPTED PRIVATE KEY-----', 'Encrypted Private Key');
+    assertSecretDetected('-----BEGIN ENCRYPTED PRIVATE KEY-----', 'Private Key Block');
+});
+
+test('redacts a full PEM block in its entirety, even with entropy disabled', () => {
+    // Regression: the old header-only patterns replaced just the BEGIN line and
+    // left the entire base64 key material in the text — with entropy off, a
+    // complete private key would ship to the model.
+    const body = 'MIIEpAIBAAKCAQEA' + 'a1B2c3D4e5F6g7H8'.repeat(3);
+    const pem = [
+        '-----BEGIN RSA PRIVATE KEY-----',
+        body,
+        '-----END RSA PRIVATE KEY-----',
+    ].join('\n');
+    const config: ScannerConfig = { ...DEFAULT_CONFIG, enableEntropy: false };
+    const result = SecretScanner.redact(pem, config);
+    assert.ok(result.detectedTypes.has('Private Key Block'), 'Expected Private Key Block type');
+    assert.ok(!result.redactedText.includes('MIIEpA'), `Key material leaked: ${result.redactedText}`);
+    assert.ok(!result.redactedText.includes(body), 'Full key body must be redacted');
+    assert.ok(result.redactedText.includes('{{SECRET_'), 'Expected a placeholder');
+});
+
+test('detects age secret key', () => {
+    assertSecretDetected(
+        'AGE-SECRET-KEY-1' + 'ABCDEFGHJK'.repeat(5) + 'LMNPQRST',
+        'age Secret Key'
+    );
 });
 
 
@@ -360,6 +561,18 @@ test('PostgreSQL URI with high-entropy password still counts as one secret', () 
     );
 });
 
+test('DB URI patterns complete quickly on pathological input (ReDoS regression)', () => {
+    // The old [^\s'"]+ userinfo classes allowed quadratic backtracking — a crafted
+    // 40KB line took >600ms. The tightened classes must stay linear. The bound is
+    // deliberately generous (slow CI headroom); the point is catching a return to
+    // quadratic behaviour, not micro-benchmarking.
+    const evil = 'postgres://' + 'a:'.repeat(20000);
+    const start = Date.now();
+    SecretScanner.redact(evil, DEFAULT_CONFIG);
+    const elapsed = Date.now() - start;
+    assert.ok(elapsed < 1000, `Expected redact() on pathological URI input to finish in <1000ms, took ${elapsed}ms`);
+});
+
 test('Separate PASSWORD assignment alongside URI counts as one secret (same value, deduped)', () => {
     // If the password appears both in the URI AND as a standalone DB_PASSWORD= line,
     // that is two distinct sensitive values and should count as two.
@@ -389,6 +602,29 @@ test('detects DigitalOcean PAT', () => {
     );
 });
 
+test('detects Fly.io Access Token (base64url charset)', () => {
+    assertSecretDetected('fo1_' + 'aBcDeF123_'.repeat(4), 'Fly.io Access Token');
+});
+
+test('detects Heroku API Key (HRKU v2)', () => {
+    assertSecretDetected('HRKU-AA' + 'A1b2C3d4e5'.repeat(5) + 'aBcDefG9', 'Heroku API Key');
+});
+
+test('detects Cloudflare API Token (keyword-anchored)', () => {
+    assertSecretDetected('CLOUDFLARE_API_TOKEN=' + 'aB3dE5g7H9'.repeat(4), 'Cloudflare API Token');
+});
+
+test('detects Cloudflare Origin CA Key', () => {
+    assertSecretDetected(
+        'v1.0-' + '0123456789abcdef01234567' + '-' + '0123456789abcdef'.repeat(9) + 'ab',
+        'Cloudflare Origin CA Key'
+    );
+});
+
+test('detects Vercel Blob Token', () => {
+    assertSecretDetected('vercel_blob_rw_' + 'A1b2C3d4e5'.repeat(3), 'Vercel Blob Token');
+});
+
 test('detects NPM Token', () => {
     assertSecretDetected('npm_abcdefghijklmnopqrstuvwxyz1234567890', 'NPM Access Token');
 });
@@ -406,6 +642,29 @@ test('detects PlanetScale API token', () => {
 
 test('does not flag short pscale_tkn_ string (too short)', () => {
     assertNoSecrets('pscale_tkn_short');
+});
+
+
+// ── Infrastructure / DevOps ──────────
+console.log('\n🏗️  Infrastructure Patterns:');
+
+test('detects Doppler service token with config segment', () => {
+    assertSecretDetected('dp.st.prd_config.' + 'A1b2C3d4e5'.repeat(4), 'Doppler Token');
+});
+
+test('detects Databricks API token', () => {
+    assertSecretDetected('dapi' + '0123456789abcdef'.repeat(2), 'Databricks API Token');
+});
+
+test('detects Tailscale auth key', () => {
+    assertSecretDetected('tskey-auth-kAbCd12345-AbCdEfGh12345', 'Tailscale Key');
+});
+
+test('detects Dynatrace API token', () => {
+    assertSecretDetected(
+        'dt0c01.ABCDEFGHJKLMNPQRSTUVWXYZ.' + 'A1B2C3D4E5F6G7H8'.repeat(4),
+        'Dynatrace API Token'
+    );
 });
 
 
@@ -427,6 +686,31 @@ test('detects Supabase secret (service role) key', () => {
 });
 
 
+// ── Monitoring / Analytics ───────────
+console.log('\n📡 Monitoring Patterns:');
+
+test('detects Datadog API key (real-world DD_API_KEY form)', () => {
+    // The old pattern required a literal 'ddapikey' and never matched reality.
+    assertSecretDetected('DD_API_KEY=a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4', 'Datadog API Key');
+});
+
+test('detects Sentry user token', () => {
+    assertSecretDetected('sntryu_' + '0123456789abcdef'.repeat(4), 'Sentry User Token');
+});
+
+test('detects Sentry org token', () => {
+    assertSecretDetected('sntrys_eyJ' + 'A1b2C3d4e5'.repeat(6), 'Sentry Org Token');
+});
+
+test('detects Grafana service account token', () => {
+    assertSecretDetected('glsa_' + 'A1b2C3d4'.repeat(4) + '_deadbeef', 'Grafana Service Account Token');
+});
+
+test('detects Grafana Cloud token', () => {
+    assertSecretDetected('glc_' + 'A1b2C3d4e5'.repeat(4) + '=', 'Grafana Cloud Token');
+});
+
+
 // ── Okta ─────────────────────────────────────────────────────
 console.log('\n🔐  Okta:');
 
@@ -439,6 +723,74 @@ test('detects Okta API Token', () => {
 
 test('does not flag 00-prefix hex that is too short', () => {
     assertNoSecrets('00deadbeef');
+});
+
+test('does not flag bare 00-prefixed base64url without an okta keyword', () => {
+    // The old \b00[a-zA-Z0-9_-]{40}\b fired on ANY 42-char base64url starting 00.
+    assertNoSecrets('00AbCdEfGhIjKlMnOpQrStUvWxYzAbCdEfGhIjKlMn', { ...DEFAULT_CONFIG, enableEntropy: false });
+});
+
+
+// ── Config Files / Local Credentials ─
+console.log('\n📁 Config File Patterns:');
+
+test('detects netrc credentials', () => {
+    assertSecretDetected(
+        'machine api.example.com login craig password s3cretPass',
+        'netrc Credentials'
+    );
+});
+
+test('detects Docker config auth blob', () => {
+    assertSecretDetected('"auth": "dXNlcjpzZWNyZXRwYXNzd29yZA=="', 'Docker Config Auth');
+});
+
+test('detects npmrc auth token line', () => {
+    assertSecretDetected(
+        '//registry.npmjs.org/:_authToken=s3cr3tT0ken12345',
+        'npmrc Auth Token'
+    );
+});
+
+test('detects kubeconfig client-key-data', () => {
+    assertSecretDetected('client-key-data: ' + 'TFMwdExTMU'.repeat(12), 'Kubeconfig Client Key');
+});
+
+
+// ── SaaS / Productivity ──────────────
+console.log('\n🗂️  SaaS & Productivity Patterns:');
+
+test('detects Notion integration token', () => {
+    assertSecretDetected('ntn_12345678901' + 'aBcDeFg'.repeat(5), 'Notion Integration Token');
+});
+
+test('detects Airtable PAT', () => {
+    assertSecretDetected('patAbCd1234EfGh56.' + '0123456789abcdef'.repeat(4), 'Airtable PAT');
+});
+
+test('detects HubSpot private app token', () => {
+    assertSecretDetected(fixture('pat-', 'na1-', '12345678-90ab-cdef-1234-567890abcdef'), 'HubSpot Private App Token');
+});
+
+test('detects Figma PAT', () => {
+    assertSecretDetected('figd_' + 'A1b2C3d4e5'.repeat(4), 'Figma PAT');
+});
+
+test('detects 1Password service account token', () => {
+    assertSecretDetected('ops_eyJ' + 'A1b2C3d4e5'.repeat(11), '1Password Service Account Token');
+});
+
+test('detects Dropbox access token', () => {
+    assertSecretDetected('sl.' + 'A1b2C3d4e5'.repeat(14), 'Dropbox Access Token');
+});
+
+test('detects keyword-adjacent UUID credential (Snyk/Railway style)', () => {
+    // Bare UUIDs are deliberately skipped by the entropy pass, so services whose
+    // tokens ARE UUIDs (Snyk, Railway, Splunk HEC) need a keyword anchor.
+    assertSecretDetected(
+        'SNYK_TOKEN=12345678-90ab-cdef-1234-567890abcdef',
+        'Keyword-adjacent UUID Credential'
+    );
 });
 
 
