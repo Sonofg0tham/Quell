@@ -29,6 +29,7 @@
 const path = require('path');
 const fs = require('fs');
 const os = require('os');
+const crypto = require('crypto');
 
 const FAIL_OPEN_EXIT = 0;
 const BLOCK_EXIT = 2;
@@ -53,10 +54,29 @@ function failOpen(reason) {
  */
 function warnBrokenInstallOnce(sessionId, reason) {
     try {
-        const key = String(sessionId || 'nosession').replace(/[^A-Za-z0-9_-]/g, '');
+        // Session ids are not secret, but they are not ours to scatter across a
+        // world-readable directory either, so the marker is named by digest.
+        const key = crypto
+            .createHash('sha256')
+            .update(String(sessionId || 'nosession'))
+            .digest('hex')
+            .slice(0, 32);
         const marker = path.join(os.tmpdir(), `quell-install-warned-${key}`);
-        if (fs.existsSync(marker)) { return; }
-        fs.writeFileSync(marker, String(Date.now()));
+
+        // Exclusive create: one atomic syscall that both tests for existence and
+        // claims the marker. An existsSync-then-write pair is a race, and in a
+        // shared temp directory it is also a symlink-following hazard.
+        let fd;
+        try {
+            fd = fs.openSync(marker, 'wx', 0o600);
+        } catch {
+            return; // Already warned this session, or we cannot claim it safely.
+        }
+        try {
+            fs.writeSync(fd, String(Date.now()));
+        } finally {
+            fs.closeSync(fd);
+        }
 
         process.stdout.write(
             '⚠️ Quell is installed but its scanner could not be loaded, so prompts are ' +

@@ -59,8 +59,6 @@ const URL_EGRESS_TOOL = /(?<![\w/.\-])(?:curl|wget|Invoke-WebRequest|Invoke-Rest
 // `--host` flag, and dig/nslookup already cover the DNS-exfiltration vector.
 const SCHEMELESS_EGRESS_TOOL = /(?<![\w/.\-])(?:nc|ncat|netcat|telnet|scp|sftp|rsync|ssh|ftp|ping|nslookup|dig|doggo|resolvectl)\b/i;
 
-const EGRESS_TOOL = new RegExp(`${URL_EGRESS_TOOL.source}|${SCHEMELESS_EGRESS_TOOL.source}`, 'i');
-
 // Any scheme://authority — the authority is what we actually judge.
 const URL_RE = /\b[a-z][a-z0-9+.-]*:\/\/([^\s'"`;|)&]+)/gi;
 

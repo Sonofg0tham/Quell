@@ -142,7 +142,7 @@ function isJoinerScript(cp) {
  * legitimate scientific and mathematical text.
  */
 const CYRILLIC_CONFUSABLES = /[аеорсухіјѕһԛԝցАВЕКМНОРСТХЅІЈԁ]/;
-const GREEK_CONFUSABLES = /[οναρτυχρΑΒΕΖΗΙΚΜΝΟΡΤΥΧϲϹ]/;
+const GREEK_CONFUSABLES = /[οναρτυχΑΒΕΖΗΙΚΜΝΟΡΤΥΧϲϹ]/;
 const PICTOGRAPHIC = /\p{Extended_Pictographic}/u;
 const REGIONAL_INDICATOR = /[\u{1F1E6}-\u{1F1FF}]/u;
 function isEmojiBase(cp) {

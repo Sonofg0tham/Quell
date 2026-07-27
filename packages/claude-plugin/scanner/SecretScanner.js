@@ -124,9 +124,9 @@ class SecretScanner {
         { name: 'Slack App Token', regex: /xapp-[0-9]{1}-[A-Z0-9]{10,13}-[0-9]{10,13}-[a-zA-Z0-9]{64}/ },
         { name: 'Slack Refresh Token', regex: /xoxe\.xox[bp]-\d+-[A-Za-z0-9]{30,}/ },
         { name: 'Slack App Config Token', regex: /xoxe-\d+-[A-Za-z0-9]{30,}/ },
-        { name: 'Slack Webhook', regex: /https:\/\/hooks\.slack\.com\/services\/T[A-Z0-9]{8,}\/B[A-Z0-9]{8,}\/[a-zA-Z0-9]{24}/ },
+        { name: 'Slack Webhook', regex: /(?<![\w.-])https:\/\/hooks\.slack\.com\/services\/T[A-Z0-9]{8,}\/B[A-Z0-9]{8,}\/[a-zA-Z0-9]{24}/ },
         { name: 'Discord Bot Token', regex: /\b[MNO][A-Za-z\d]{23,}\.[\w-]{6}\.[\w-]{27,}/ },
-        { name: 'Discord Webhook', regex: /https:\/\/discord(?:app)?\.com\/api\/webhooks\/\d+\/[\w-]+/ },
+        { name: 'Discord Webhook', regex: /(?<![\w.-])https:\/\/discord(?:app)?\.com\/api\/webhooks\/\d+\/[\w-]+/ },
         // Real bot IDs are 5-16 digits and the secret segment always starts 'AA'.
         { name: 'Telegram Bot Token', regex: /\b\d{5,16}:AA[A-Za-z0-9_-]{32,34}(?![A-Za-z0-9_-])/ },
         { name: 'Twilio API Key', regex: /SK[0-9a-fA-F]{32}/ },
