@@ -2,7 +2,37 @@
 
 All notable changes to Quell will be documented in this file.
 
-## [Unreleased]
+## [2.9.1] - 2026-07-28
+
+### 📖 Documentation
+
+The README described what each engine *does*. It never described what happens
+to *you*, which made it possible to ship two detection engines and still not
+know when you would hit either of them.
+
+- **New [USAGE.md](USAGE.md)**: a "which part do I use when" table, numbered
+  first-run setup, one worked scenario per engine, a table of what to do for
+  each finding type including the ones that mean "do nothing", and an honest
+  limitations section.
+- The prompt-injection scenario shows the same README twice, once as a human
+  sees it and once as the model sees it. That difference is the whole point and
+  no amount of describing "Unicode Tags-block smuggling" conveys it.
+- **Fixed docs naming commands that do not exist.** `Quell: Getting Started`
+  was never registered — the walkthrough opens via `Welcome: Open Walkthrough`
+  — and that error was already live in the published README. `Quell: Redact
+  Active File` is really `Quell: Redact Secrets in Active File`. Every command
+  and setting named in the docs is now checked against `package.json`, and
+  every finding type against the scanner source.
+- README links to USAGE.md are absolute, because relative links are unreliable
+  once the README is rendered on the Marketplace. Engine count corrected from
+  two to three.
+
+### ⚙️ Release pipeline
+
+- The build job packaged with an unpinned, deprecated `vsce` while the publish
+  job pinned `@vscode/vsce@3.9.2`. Both are pinned now. The job that builds the
+  artefact decides what ends up in it, so it matters at least as much as the
+  one that uploads it.
 
 ### 🔌 MCP configuration auditing
 

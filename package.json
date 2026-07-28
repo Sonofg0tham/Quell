@@ -2,7 +2,7 @@
     "name": "quell",
     "displayName": "Quell",
     "description": "Stop secrets leaking into AI tools \u2014 and stop hidden instructions reaching them. Quell redacts API keys before they hit Copilot, Cursor or Windsurf, and flags prompt injection hiding in your files. 100% offline, zero telemetry.",
-    "version": "2.9.0",
+    "version": "2.9.1",
     "publisher": "Sonofg0tham",
     "icon": "assets/icon.png",
     "galleryBanner": {

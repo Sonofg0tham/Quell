@@ -47,8 +47,13 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
+      # Pinned, and the modern package name. The old unscoped `vsce` is
+      # deprecated, and leaving it unpinned meant the job that BUILDS the
+      # artefact ran whatever version npm served that day, while the job that
+      # publishes it was carefully pinned. The build step is the one that
+      # decides what ends up in the VSIX, so it matters at least as much.
       - name: Package extension
-        run: npx vsce package --no-dependencies
+        run: npx --yes @vscode/vsce@3.9.2 package --no-dependencies
 
       - name: Get version from tag
         id: version

@@ -2,19 +2,19 @@
 
 Living tracker of where Quell is, what's landed, and what's next. Update after every session that changes state. Sits alongside `POSITIONING.md` (strategy) and `FIX_PROMPTS/` (concrete next actions).
 
-*Last updated: 2026-07-27 (round 13 landed: PromptGuard — inbound prompt-injection engine — plus three High-severity security fixes and a supply-chain hardening pass. v2.9.0.)*
+*Last updated: 2026-07-28 (v2.9.1: USAGE.md guide with worked scenarios, doc command-name fixes, pinned build tooling. v2.9.0 delivered PromptGuard + three High-severity fixes; McpGuard landed between the two.)*
 
 ## Snapshot
 
 - **Repo**: `C:\\Users\\craig\\Github Repos\\Quell`, single checkout on `main`
 - **Publisher**: `Sonofg0tham`
-- **Extension**: v2.9.0 live on Marketplace (19 installs) and Open VSX (2,206 downloads)
-- **Scanner npm package**: [`@sonofg0tham/quell-scanner`](https://www.npmjs.com/package/@sonofg0tham/quell-scanner) — 0.2.0 is live on npm; 0.3.0 (adds `PromptGuard` + `EnvRedactor`) is prepared locally and not yet published
+- **Extension**: v2.9.1 live on Marketplace and Open VSX (auto-published by the release workflow on tag push)
+- **Scanner npm package**: [`@sonofg0tham/quell-scanner@0.3.0`](https://www.npmjs.com/package/@sonofg0tham/quell-scanner) live on npm — three engines: `SecretScanner`, `PromptGuard`, `McpGuard` (plus `EnvRedactor`)
 - **Claude Code plugin**: `@sonofg0tham/quell-claude@0.1.0` in repo at `packages/claude-plugin/` (not yet distributed via marketplace; install locally via `claude --plugin-dir`)
 - **Licence**: MIT
 - **Adoption (as of 2026-04-09)**: OpenVSX 484 downloads / 7 installs, VSCode Marketplace 65 acquisitions in last 30 days
 - **Tests**: 277 scanner (SecretScanner 143, PromptGuard 79, EnvRedactor 25, McpGuard 30) + 63 plugin hook = 340 passing
-- **Working tree**: v2.9.0 shipped and committed; McpGuard work uncommitted
+- **Working tree**: clean, everything shipped through v2.9.1
 
 ## Workflow rules for this project
 
@@ -27,12 +27,25 @@ Living tracker of where Quell is, what's landed, and what's next. Update after e
 
 With `.github/workflows/release.yml` in place, future versions work like this:
 
+Fully automated since the `MARKETPLACE_READY` repo variable was set to `true` and
+the `VSCE_PAT` / `OVSX_PAT` secrets were added. Steps 5 and 6 below used to be
+manual and no longer are.
+
 1. Bump version in `package.json` + update `CHANGELOG.md`
 2. Commit and push to main
-3. Push a tag: `git tag v2.6.0 && git push origin v2.6.0`
-4. GitHub Actions builds `quell-2.6.0.vsix` and attaches it to a GitHub Release automatically
-5. Download the VSIX from the release, upload to VS Code Marketplace manually
-6. Run `npx ovsx publish quell-2.6.0.vsix -p <token>` for OpenVSX
+3. Push a tag: `git tag v2.9.1; git push origin v2.9.1`
+4. Actions runs the full test suite, then builds `quell-2.9.1.vsix`
+5. It creates the GitHub Release and attaches the VSIX
+6. It publishes to the VS Code Marketplace **and** Open VSX automatically
+
+Note that a tag push therefore publishes publicly with no further confirmation.
+The `publish-marketplaces` job is gated on `vars.MARKETPLACE_READY == 'true'`, so
+setting that variable to anything else disarms it while still producing a
+GitHub Release.
+
+The Marketplace listing only re-renders the README when a new version is
+published, which is the reason v2.9.1 exists: v2.9.0's listing still showed docs
+naming a command that was never registered.
 
 ## What's landed
 
