@@ -16,6 +16,8 @@
 
 > 100% offline. Zero network calls. Zero telemetry. Your secrets never leave your machine.
 
+**New here? Read [USAGE.md](https://github.com/Sonofg0tham/Quell/blob/main/USAGE.md).** It's a step-by-step setup guide plus a worked scenario for each of the three engines, written for people who want to know *when they'd actually hit this*, not just what the features are called.
+
 ![Quell sidebar dashboard](assets/screenshot-sidebar.png)
 ![Inline diagnostics and Quick Fix](assets/screenshot-diagnostics.png)
 ![Before and after redaction](assets/screenshot-redaction.png)
@@ -68,17 +70,41 @@ It is perfectly legible to a language model.
 
 ---
 
-## 🧩 Two Engines, Three Surfaces
+## 🧩 Three Engines, Three Surfaces
 
-Quell ships two offline detection engines — `SecretScanner` for what leaves, `PromptGuard` for what arrives — in three forms, so protection follows you across tools:
+Quell ships three offline detection engines. They are not separate tools — they live in one library and one extension:
+
+| Engine | Job |
+|---|---|
+| `SecretScanner` | Finds credentials in text, so they can be redacted before they leave |
+| `PromptGuard` | Finds instructions hidden in content, aimed at your AI rather than at you |
+| `McpGuard` | Understands MCP config files and hands the interesting parts to the other two |
+
+Those engines reach you through three surfaces, so protection follows you across tools:
 
 | Surface | What it protects | Get it |
 |---|---|---|
 | **VSCode extension** | Editing, clipboard, AI-chat paste in VSCode, Cursor and Windsurf, plus inline injection diagnostics | [VS Marketplace](https://marketplace.visualstudio.com/items?itemName=Sonofg0tham.quell) · [Open VSX](https://open-vsx.org/extension/Sonofg0tham/quell) |
 | **Claude Code plugin** | Blocks secret-bearing prompts before they reach Claude, asks before a tool call reads a secret and sends it over the network, and warns the model when content it just read tried to instruct it | [`packages/claude-plugin`](packages/claude-plugin) |
-| **`@sonofg0tham/quell-scanner`** | Both engines standalone, for your own pipelines, hooks, or CI | [npm](https://www.npmjs.com/package/@sonofg0tham/quell-scanner) |
+| **`@sonofg0tham/quell-scanner`** | All three engines standalone, for your own pipelines, hooks, or CI | [npm](https://www.npmjs.com/package/@sonofg0tham/quell-scanner) |
 
-All three are offline, dependency-free, and share one test suite enforced in CI.
+All three surfaces are offline, dependency-free, and share one test suite enforced in CI.
+
+---
+
+## 🧭 Which part do I use when?
+
+You don't really "use" most of Quell. It watches, and interrupts when something matters. This is about knowing *why* it interrupted.
+
+| You're doing this | The part that acts | What it stops |
+|---|---|---|
+| Pasting code into Copilot, Cursor or Claude | **SecretScanner** | Your live API key going to a cloud model |
+| Copying a `.env` to ask why the DB won't connect | **SecretScanner** | Database passwords in a chat log |
+| Asking your agent to review a PR, dependency or issue | **PromptGuard** | Instructions hidden in that content hijacking your agent |
+| Opening a README or `AGENTS.md` from a repo you didn't write | **PromptGuard** | Text you can't see telling your assistant what to do |
+| Adding an MCP server to Cursor or Claude Desktop | **McpGuard** | A token pasted into a config you're about to commit |
+
+Full worked scenarios for each, with real examples, are in **[USAGE.md](https://github.com/Sonofg0tham/Quell/blob/main/USAGE.md)**.
 
 ---
 
@@ -260,16 +286,18 @@ New to Quell? On first install, a **Getting Started walkthrough** opens automati
 4. Setting up the AI Indexing Shield
 5. How your secrets are stored (OS Keychain, fully offline)
 
-You can reopen it anytime from the Command Palette: `Quell: Getting Started`.
+You can reopen it any time from the Command Palette with `Welcome: Open Walkthrough`, then pick **Get started with Quell**.
 
 ## 🚀 Quick Start
 
-1. Install Quell from the [VS Code Marketplace](https://marketplace.visualstudio.com/items?itemName=Sonofg0tham.quell)
-2. Follow the onboarding walkthrough
-3. Press `Ctrl+Shift+C` to copy code safely for AI chat
-4. Enable the **AI Indexing Shield** in the sidebar to block AI file indexing
-5. Enable **Clipboard Auto-Sanitize** in the sidebar for maximum protection
-6. Use `@quell /context` to safely share `.env` structure
+1. Install Quell from the [VS Code Marketplace](https://marketplace.visualstudio.com/items?itemName=Sonofg0tham.quell), or [Open VSX](https://open-vsx.org/extension/Sonofg0tham/quell) for Cursor, Windsurf and Antigravity
+2. Follow the onboarding walkthrough, or run `Quell: Open Demo File` to see detection working on safe fake credentials
+3. Learn the two shortcuts: `Ctrl+Shift+C` copies with secrets stripped, `Ctrl+Shift+V` pastes with secrets stripped
+4. Enable the **AI Indexing Shield** in the sidebar
+5. Consider **Clipboard Auto-Sanitize** in the sidebar. It protects you when you forget the shortcut, which is most of the time, but read the trade-off in [USAGE.md](https://github.com/Sonofg0tham/Quell/blob/main/USAGE.md) first
+6. Run `Quell: Scan Workspace for Secrets` for a first audit. It checks MCP configs too
+
+**[→ Full guide with worked scenarios](https://github.com/Sonofg0tham/Quell/blob/main/USAGE.md)**
 
 ---
 
