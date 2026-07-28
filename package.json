@@ -1,7 +1,7 @@
 {
     "name": "quell",
     "displayName": "Quell",
-    "description": "Stop secrets leaking into AI tools — and stop hidden instructions reaching them. Quell redacts API keys before they hit Copilot, Cursor or Windsurf, and flags prompt injection hiding in your files. 100% offline, zero telemetry.",
+    "description": "Stop secrets leaking into AI tools \u2014 and stop hidden instructions reaching them. Quell redacts API keys before they hit Copilot, Cursor or Windsurf, and flags prompt injection hiding in your files. 100% offline, zero telemetry.",
     "version": "2.9.0",
     "publisher": "Sonofg0tham",
     "icon": "assets/icon.png",
@@ -240,7 +240,7 @@
                     "default": 4.5,
                     "minimum": 2,
                     "maximum": 7,
-                    "description": "Minimum Shannon Entropy to flag a token (higher = fewer false positives, lower = more aggressive). Typical API keys score 4.5–6.0.",
+                    "description": "Minimum Shannon Entropy to flag a token (higher = fewer false positives, lower = more aggressive). Typical API keys score 4.5\u20136.0.",
                     "order": 2
                 },
                 "quell.minimumTokenLength": {
@@ -292,7 +292,7 @@
                 "quell.confirmBeforeRedact": {
                     "type": "boolean",
                     "default": false,
-                    "description": "Show a confirmation dialog before redacting secrets in the active file. Disabled by default as of v2.4.0 — enable if you want an extra confirmation step.",
+                    "description": "Show a confirmation dialog before redacting secrets in the active file. Disabled by default as of v2.4.0 \u2014 enable if you want an extra confirmation step.",
                     "order": 7
                 },
                 "quell.autoSanitizeClipboard": {
@@ -304,25 +304,25 @@
                 "quell.redactTestKeys": {
                     "type": "boolean",
                     "default": false,
-                    "description": "When enabled, officially-published test/demo credentials (e.g. AKIAIOSFODNN7EXAMPLE) are treated as real secrets and redacted. Disabled by default because these values are intentionally safe — they appear in READMEs, tutorials, and Quell's own demo file.",
+                    "description": "When enabled, officially-published test/demo credentials (e.g. AKIAIOSFODNN7EXAMPLE) are treated as real secrets and redacted. Disabled by default because these values are intentionally safe \u2014 they appear in READMEs, tutorials, and Quell's own demo file.",
                     "order": 9
                 },
                 "quell.injection.enabled": {
                     "type": "boolean",
                     "default": true,
-                    "description": "Scan files for prompt-injection threats — hidden instructions aimed at your AI assistant rather than at you. This is the inbound counterpart to secret redaction.",
+                    "description": "Scan files for prompt-injection threats \u2014 hidden instructions aimed at your AI assistant rather than at you. This is the inbound counterpart to secret redaction.",
                     "order": 10
                 },
                 "quell.injection.detectHiddenCharacters": {
                     "type": "boolean",
                     "default": true,
-                    "description": "Detect invisible text: Unicode Tags-block smuggling, zero-width characters, bidirectional overrides (Trojan Source), and stray variation selectors. Deterministic, with effectively no false positives — legitimate emoji sequences are preserved.",
+                    "description": "Detect invisible text: Unicode Tags-block smuggling, zero-width characters, bidirectional overrides (Trojan Source), and stray variation selectors. Deterministic, with effectively no false positives \u2014 legitimate emoji sequences are preserved.",
                     "order": 11
                 },
                 "quell.injection.detectInstructionOverrides": {
                     "type": "boolean",
                     "default": true,
-                    "description": "Detect language aimed at a model rather than a reader — 'ignore previous instructions', 'do not tell the user', embedded exfiltration commands. Heuristic, so it can fire on security documentation that quotes these phrases.",
+                    "description": "Detect language aimed at a model rather than a reader \u2014 'ignore previous instructions', 'do not tell the user', embedded exfiltration commands. Heuristic, so it can fire on security documentation that quotes these phrases.",
                     "order": 12
                 },
                 "quell.injection.detectHomoglyphs": {
@@ -346,12 +346,12 @@
             {
                 "id": "quell.gettingStarted",
                 "title": "Get started with Quell",
-                "description": "Stop secrets leaking into AI tools — in under 5 minutes.",
+                "description": "Stop secrets leaking into AI tools \u2014 in under 5 minutes.",
                 "steps": [
                     {
                         "id": "quell.welcome",
                         "title": "What is Quell?",
-                        "description": "Quell sits between you and AI tools (Copilot, Cursor, Windsurf). When you copy code or paste prompts, it strips out API keys, passwords, and tokens — replacing them with safe placeholders.\n\nYour real secrets never leave your machine. They're stored in your OS Keychain (Windows Credential Manager / macOS Keychain). No telemetry, no network calls, fully offline.",
+                        "description": "Quell sits between you and AI tools (Copilot, Cursor, Windsurf). When you copy code or paste prompts, it strips out API keys, passwords, and tokens \u2014 replacing them with safe placeholders.\n\nYour real secrets never leave your machine. They're stored in your OS Keychain (Windows Credential Manager / macOS Keychain). No telemetry, no network calls, fully offline.",
                         "media": {
                             "svg": "assets/quell-sidebar.svg",
                             "altText": "Quell shield"
@@ -361,7 +361,7 @@
                     {
                         "id": "quell.demo",
                         "title": "See it catch a secret",
-                        "description": "Click below to open a demo file with fake GitHub, database, and OpenAI credentials. Watch the yellow squiggles appear — then use the Quick Fix lightbulb (or Ctrl+.) to redact them.\n\n[Open demo file](command:quell.openDemo)",
+                        "description": "Click below to open a demo file with fake GitHub, database, and OpenAI credentials. Watch the yellow squiggles appear \u2014 then use the Quick Fix lightbulb (or Ctrl+.) to redact them.\n\n[Open demo file](command:quell.openDemo)",
                         "media": {
                             "svg": "assets/quell-sidebar.svg",
                             "altText": "Quell demo"
@@ -373,7 +373,7 @@
                     {
                         "id": "quell.injection",
                         "title": "Catch what you can't see",
-                        "description": "Secrets leaking out is only half the problem. The other half is instructions coming in — text hidden inside a file that speaks to your AI assistant instead of to you, using characters that render as nothing.\n\nQuell flags those in red, decodes the hidden text so you can read it, and strips it in one click.\n\n[Scan for hidden instructions](command:quell.scanForInjection)",
+                        "description": "Secrets leaking out is only half the problem. The other half is instructions coming in \u2014 text hidden inside a file that speaks to your AI assistant instead of to you, using characters that render as nothing.\n\nQuell flags those in red, decodes the hidden text so you can read it, and strips it in one click.\n\n[Scan for hidden instructions](command:quell.scanForInjection)",
                         "media": {
                             "svg": "assets/quell-sidebar.svg",
                             "altText": "Prompt injection guard"
@@ -386,7 +386,7 @@
                     {
                         "id": "quell.shortcuts",
                         "title": "The two shortcuts to know",
-                        "description": "**Ctrl+Shift+C** — Copy Redacted: copies your selection with secrets stripped. Safe to paste anywhere.\n\n**Ctrl+Shift+V** — Sanitised Paste: pastes from clipboard with secrets automatically removed.\n\n[Try Copy Redacted now](command:quell.copyRedacted)",
+                        "description": "**Ctrl+Shift+C** \u2014 Copy Redacted: copies your selection with secrets stripped. Safe to paste anywhere.\n\n**Ctrl+Shift+V** \u2014 Sanitised Paste: pastes from clipboard with secrets automatically removed.\n\n[Try Copy Redacted now](command:quell.copyRedacted)",
                         "media": {
                             "svg": "assets/quell-sidebar.svg",
                             "altText": "Shortcuts"
@@ -399,7 +399,7 @@
                     {
                         "id": "quell.aiShield",
                         "title": "Block AI from indexing your secrets",
-                        "description": "Quell can add your secret files (like .env) to your AI IDE's ignore list — so tools like Cursor or Windsurf never index them in the first place.\n\n[Enable AI Shield](command:quell.enableAiShield)",
+                        "description": "Quell can add your secret files (like .env) to your AI IDE's ignore list \u2014 so tools like Cursor or Windsurf never index them in the first place.\n\n[Enable AI Shield](command:quell.enableAiShield)",
                         "media": {
                             "svg": "assets/quell-sidebar.svg",
                             "altText": "AI Shield"
@@ -426,7 +426,7 @@
         "vscode:prepublish": "npm run compile",
         "compile": "tsc -p ./",
         "watch": "tsc -watch -p ./",
-        "test": "tsc -p ./tsconfig.test.json && node out/packages/scanner/src/test/SecretScanner.test.js && node out/packages/scanner/src/test/PromptGuard.test.js && node out/packages/scanner/src/test/EnvRedactor.test.js"
+        "test": "tsc -p ./tsconfig.test.json && node out/packages/scanner/src/test/SecretScanner.test.js && node out/packages/scanner/src/test/PromptGuard.test.js && node out/packages/scanner/src/test/EnvRedactor.test.js && node out/packages/scanner/src/test/McpGuard.test.js"
     },
     "devDependencies": {
         "@types/node": "20.x",

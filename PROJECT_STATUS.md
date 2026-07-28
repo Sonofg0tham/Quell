@@ -8,13 +8,13 @@ Living tracker of where Quell is, what's landed, and what's next. Update after e
 
 - **Repo**: `C:\\Users\\craig\\Github Repos\\Quell`, single checkout on `main`
 - **Publisher**: `Sonofg0tham`
-- **Extension**: v2.9.0 prepared locally; v2.8.1 is the last published build on Marketplace and OpenVSX
+- **Extension**: v2.9.0 live on Marketplace (19 installs) and Open VSX (2,206 downloads)
 - **Scanner npm package**: [`@sonofg0tham/quell-scanner`](https://www.npmjs.com/package/@sonofg0tham/quell-scanner) — 0.2.0 is live on npm; 0.3.0 (adds `PromptGuard` + `EnvRedactor`) is prepared locally and not yet published
 - **Claude Code plugin**: `@sonofg0tham/quell-claude@0.1.0` in repo at `packages/claude-plugin/` (not yet distributed via marketplace; install locally via `claude --plugin-dir`)
 - **Licence**: MIT
 - **Adoption (as of 2026-04-09)**: OpenVSX 484 downloads / 7 installs, VSCode Marketplace 65 acquisitions in last 30 days
-- **Tests**: 247 scanner (SecretScanner 143, PromptGuard 79, EnvRedactor 25) + 63 plugin hook = 310 passing
-- **Working tree**: v2.9.0 changes uncommitted (see round 13 below)
+- **Tests**: 277 scanner (SecretScanner 143, PromptGuard 79, EnvRedactor 25, McpGuard 30) + 63 plugin hook = 340 passing
+- **Working tree**: v2.9.0 shipped and committed; McpGuard work uncommitted
 
 ## Workflow rules for this project
 
@@ -130,10 +130,13 @@ them. This is the convenience layer that makes the safety win usable day-to-day.
   a keychain secret beyond `clearVault`'s reach.
 
 ### Known gaps, deliberately not fixed this round
-- **MCP tool-definition pinning.** Hash tool descriptions on approval, warn on
-  change (rug pull), scan descriptions for injection. Strong differentiator, no
-  local extension ships it. Genuinely a feature in its own right, not a loose
-  end from this round.
+- **MCP tool-definition pinning.** Still open, and now distinct from MCP
+  *scanning*, which landed after 2.9.0 (`McpGuard`: credentials in env/headers/
+  args, injected tool descriptions, cleartext transport — wired into Scan
+  Workspace). Scanning catches a payload that is present today; pinning would
+  hash each server's tool descriptions on approval and warn when they change,
+  catching one added tomorrow. That is the rug-pull case (CVE-2025-54136) and it
+  is a feature in its own right.
 - **Placeholders are bearer references.** Anyone who sees a `{{SECRET_…}}` in a
   shared transcript knows a vault key. Restoring into an attacker-supplied file
   would write real values into it. Needs a design decision — probably record

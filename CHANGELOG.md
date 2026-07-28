@@ -2,6 +2,51 @@
 
 All notable changes to Quell will be documented in this file.
 
+## [Unreleased]
+
+### 🔌 MCP configuration auditing
+
+MCP server configs are a first-rank credential leak source, because server
+install instructions routinely tell you to paste an API token straight into the
+config's `env` block and those files get committed. They are also an injection
+surface: a server's tool `description` is read by the model and never by you,
+which is what makes tool poisoning work.
+
+New `McpGuard` in the scanner package, wired into **Scan Workspace**:
+
+- Recognises the real config filenames (`.mcp.json`, `.cursor/mcp.json`,
+  `.vscode/mcp.json`, `.windsurf/mcp_config.json`, `claude_desktop_config.json`)
+  on both path separators.
+- Flags hardcoded credentials in `env`, `headers` and — the shape an env-only
+  scan misses entirely — in `command` and `args`, where `--token ghp_…` is a
+  documented setup step for several popular servers. Arguments are worse than
+  the file, because the process list exposes them to everything on the machine.
+- Leaves `${VAR}` indirection alone. That is the recommended pattern, and
+  flagging it would punish people for doing the right thing.
+- Runs tool descriptions through `PromptGuard`, so a smuggled instruction in a
+  description is decoded and named.
+- Flags plain-HTTP transport to non-local hosts, and notes remote servers as
+  informational.
+- **Never reports a secret value**, only the key that held it and the credential
+  type. A module whose whole purpose is finding secrets is the last place to
+  start copying them into findings.
+
+Detection is delegated to `SecretScanner` and `PromptGuard` rather than
+reimplemented. An earlier draft grew its own "does this look secret?" heuristic
+and, on review, fired `high` on ordinary version strings and paths. Config files
+are full of innocent values, so a third false-positive surface was not worth
+having.
+
+### 🧹 Corrections
+
+Two items previously listed as open gaps were already fixed in 2.9.0 and the
+notes were stale: the vault-index read-modify-write race (`queueVaultIndexOp`
+already serialises every mutation) and the Claude Code deny-rule writer
+(`AiShieldManager._writeClaudeDeny` already merges into `.claude/settings.json`
+without disturbing user entries). Duplicate implementations of both were written
+and then discarded — a second writer on the same key would have *created* the
+race the first one prevents.
+
 ## [2.9.0] - 2026-07-27
 
 Quell now guards both directions. Until this release it protected the outbound

@@ -27,7 +27,7 @@
   ],
   "scripts": {
     "build": "tsc -p ./",
-    "test": "tsc -p ./tsconfig.test.json && node dist-test/test/SecretScanner.test.js && node dist-test/test/PromptGuard.test.js && node dist-test/test/EnvRedactor.test.js",
+    "test": "tsc -p ./tsconfig.test.json && node dist-test/test/SecretScanner.test.js && node dist-test/test/PromptGuard.test.js && node dist-test/test/EnvRedactor.test.js && node dist-test/test/McpGuard.test.js",
     "prepublishOnly": "npm run build"
   },
   "repository": {

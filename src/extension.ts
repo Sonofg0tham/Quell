@@ -1,6 +1,6 @@
 import * as vscode from 'vscode';
 import * as crypto from 'crypto';
-import { SecretScanner, PromptGuard } from '../packages/scanner/src';
+import { SecretScanner, PromptGuard, McpGuard, DEFAULT_MCP_CONFIG, McpFinding } from '../packages/scanner/src';
 import { EnvManager } from './EnvManager';
 import { Logger } from './Logger';
 import { StatusBar } from './StatusBar';
@@ -149,6 +149,21 @@ function stripHiddenAtBoundary(text: string, direction: 'outbound' | 'inbound'):
 
     Logger.warn(`${direction.toUpperCase()}: Stripped ${removed} hidden character(s).`);
     return { text: cleaned, note: ` and ${removed} hidden character(s) stripped` };
+}
+
+/**
+ * Renders MCP audit results as a short clause for the scan summary.
+ * MCP problems are reported separately from the secret count because they are a
+ * different kind of finding: a poisoned tool description contains no secret at
+ * all, and folding it into "N secrets found" would misdescribe it.
+ */
+function mcpNote(mcpFindings: Array<{ file: string; findings: McpFinding[] }>): string {
+    if (mcpFindings.length === 0) { return ''; }
+    const total = mcpFindings.reduce((n, m) => n + m.findings.length, 0);
+    const critical = mcpFindings.reduce((n, m) => n + m.findings.filter(f => f.severity === 'critical').length, 0);
+    return ` Also found ${total} MCP configuration issue(s)` +
+        (critical > 0 ? ` (${critical} critical)` : '') +
+        ` in ${mcpFindings.length} file(s) — see the Quell log.`;
 }
 
 // ═════════════════════════════════════════════════════
@@ -549,6 +564,7 @@ export function activate(context: vscode.ExtensionContext) {
         let totalSecrets = 0;
         const allTypes = new Set<string>();
         const findings: Array<{ file: string; count: number; types: string[] }> = [];
+        const mcpFindings: Array<{ file: string; findings: McpFinding[] }> = [];
 
         await vscode.window.withProgress({
             location: vscode.ProgressLocation.Notification,
@@ -570,14 +586,37 @@ export function activate(context: vscode.ExtensionContext) {
                     try {
                         const rawBytes = await vscode.workspace.fs.readFile(uri);
                         const content = Buffer.from(rawBytes).toString('utf-8');
+                        const relPath = vscode.workspace.asRelativePath(uri);
                         const { secrets, detectedTypes } = SecretScanner.redact(content, config);
 
                         if (secrets.size > 0) {
-                            const relPath = vscode.workspace.asRelativePath(uri);
                             totalSecrets += secrets.size;
                             const typesArr = Array.from(detectedTypes);
                             typesArr.forEach((t) => allTypes.add(t));
                             findings.push({ file: relPath, count: secrets.size, types: typesArr });
+                        }
+
+                        // MCP configs get a structural audit on top of the plain
+                        // text scan: a token in an `env` block is worth naming as
+                        // an MCP leak, and a poisoned tool description is invisible
+                        // to a secret scanner entirely.
+                        if (McpGuard.isMcpConfigPath(relPath)) {
+                            const mcp = McpGuard.scanConfig(content, {
+                                ...DEFAULT_MCP_CONFIG,
+                                scanner: config,
+                                guard: getGuardConfig(),
+                            });
+                            const actionable = mcp.findings.filter(f => f.severity !== 'info');
+                            if (actionable.length > 0) {
+                                mcpFindings.push({ file: relPath, findings: actionable });
+                                for (const f of actionable) {
+                                    Logger.warn(
+                                        `MCP [${f.severity.toUpperCase()}] ${relPath}` +
+                                        (f.serverName ? ` (server "${f.serverName}"` + (f.key ? `, ${f.key}` : '') + ')' : '') +
+                                        ` — ${f.type}: ${f.detail}`
+                                    );
+                                }
+                            }
                         }
                     } catch {
                         // Skip unreadable files
@@ -593,7 +632,9 @@ export function activate(context: vscode.ExtensionContext) {
         });
 
         if (totalSecrets === 0) {
-            vscode.window.showInformationMessage('🛡️ Quell: Workspace is clean — no secrets detected!');
+            vscode.window.showInformationMessage(
+                '🛡️ Quell: Workspace is clean — no secrets detected!' + mcpNote(mcpFindings)
+            );
             StatusBar.setSafe();
             Logger.scan('Workspace', 0, []);
             sidebarProvider.recordScan(0);
@@ -604,7 +645,8 @@ export function activate(context: vscode.ExtensionContext) {
             StatusBar.setAlert(totalSecrets);
             sidebarProvider.recordScan(totalSecrets, findings);
             vscode.window.showWarningMessage(
-                `Quell: Found ${totalSecrets} potential secret(s) in ${findings.length} file(s). See Quell dashboard for details.`
+                `Quell: Found ${totalSecrets} potential secret(s) in ${findings.length} file(s).` +
+                mcpNote(mcpFindings) + ' See Quell dashboard for details.'
             );
         }
     });

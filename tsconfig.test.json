@@ -20,6 +20,7 @@
         "packages/scanner/src/SecretScanner.ts",
         "packages/scanner/src/PromptGuard.ts",
         "packages/scanner/src/EnvRedactor.ts",
+        "packages/scanner/src/McpGuard.ts",
         "packages/scanner/src/test/*.ts"
     ],
     "exclude": [

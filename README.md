@@ -139,6 +139,23 @@ Findings appear as **red** squiggles, distinct from the yellow used for exposed 
 >
 > **RTL text is safe.** Directional marks (LRM/RLM/ALM) are normal in Arabic and Hebrew, so they are reported at low severity and never stripped — removing them would silently break how your localisation renders. Bidirectional *overrides*, which are the actual Trojan Source attack, are still flagged.
 
+### 🔌 MCP Configuration Audit
+
+MCP server configs are one of the fastest-growing credential leak sources, because most server install instructions tell you to paste an API token straight into the config's `env` block, and those files get committed.
+
+**Scan Workspace** now audits them:
+
+| Checked | What it catches |
+|---|---|
+| `env` and `headers` | A literal token where a `${VAR}` reference belongs |
+| `command` and `args` | `--token ghp_…` on the command line, which is worse than the file: the process list exposes it to everything running on the machine |
+| Tool `description` fields | Injected instructions, decoded and named. Descriptions are read by the model and never shown to you, which is what makes tool poisoning work |
+| `url` | Plain HTTP to a non-local host, and remote servers flagged for awareness |
+
+`${VAR}` indirection is never flagged — that's the pattern you're supposed to use. Findings name the **key** that held a credential and the credential **type**, never the value.
+
+Recognised: `.mcp.json`, `mcp.json`, `.cursor/mcp.json`, `.vscode/mcp.json`, `.windsurf/mcp_config.json`, `claude_desktop_config.json`.
+
 ### 🤖 AI Indexing Shield
 One-click toggle that generates `.cursorignore`, `.codeiumignore`, `.aiexclude`, `.aiderignore`, `.aiignore` and legacy variants — blocking AI IDEs from silently indexing your secret files.
 
